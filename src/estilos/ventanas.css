@@ -1,0 +1,359 @@
+/* Escritorio y ventanas. Lo que se usa va en una ventana; lo que explica, sobre el escritorio.
+   Anatomía fija: barra de título (identifica) · barra de herramientas (actúa) · interior · barra de estado (informa).
+   Sin semáforos, sin degradados, sin "– □ ×", sin arrastrar ni superponer. El color del marco no depende del estado de los datos. */
+
+/* ---------- Escritorio ---------- */
+main {
+  gap: var(--e-4);
+}
+@media (min-width: 40rem) {
+  main {
+    gap: var(--e-5);
+  }
+}
+.encabezado {
+  margin-bottom: var(--e-2);
+}
+
+.fuentes {
+  display: grid;
+  gap: var(--e-4);
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start; /* cada ventana mide lo suyo: con datos, una no se estira a la altura de la otra (hueco vacío) */
+}
+@media (min-width: 40rem) {
+  .fuentes {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--e-5);
+  }
+}
+
+/* Sin comprobantes la planilla no existe: quedan tres ventanas. */
+body:not([data-hay-datos]) #planilla {
+  display: none;
+}
+
+/* ---------- Marco ----------
+   Sin overflow:hidden (cortaría los anillos de foco y la cabeza fija de la planilla): las esquinas las resuelve el radio de cada barra. */
+.ventana {
+  container: ventana / inline-size;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  background: var(--c-superficie);
+  border: 1px solid var(--c-ventana-borde);
+  border-radius: var(--r-3);
+  box-shadow: var(--s-ventana);
+  transition: border-color var(--m-rapido) var(--m-curva), box-shadow var(--m-rapido) var(--m-curva);
+}
+
+/* Activa (foco adentro): orientación, no información. */
+.ventana:focus-within {
+  border-color: var(--c-borde-fuerte);
+  box-shadow: var(--s-ventana-activa);
+}
+.ventana:focus-within .ventana-barra {
+  box-shadow: inset 0 2px 0 var(--c-acento);
+}
+
+/* ---------- Barra de título ---------- */
+.ventana-barra {
+  --ancho-icono: 1.5rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 var(--e-2);
+  min-height: 2.75rem;
+  padding: 0 var(--e-1) 0 var(--e-3);
+  background: var(--c-ventana-barra);
+  border-bottom: 1px solid var(--c-borde);
+  border-radius: calc(var(--r-3) - 1px) calc(var(--r-3) - 1px) 0 0;
+}
+.ventana-barra h2 {
+  flex: 0 1 auto;
+  min-width: 0;
+  padding-block: var(--e-2);
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--c-texto);
+}
+
+/* Ícono: el mismo círculo numerado del diagrama "Qué hace" (pasos 1 a 3) o un ícono simple (planilla, guía). */
+.ventana-icono {
+  flex: none;
+  width: var(--ancho-icono);
+  height: var(--ancho-icono);
+  color: var(--c-acento);
+}
+svg.ventana-icono {
+  padding: 0.1875rem;
+}
+.ventana-paso {
+  display: grid;
+  place-items: center;
+  border: 1.5px solid var(--c-acento);
+  border-radius: 50%;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+body[data-hay-datos] #fuente-comprobantes .ventana-paso,
+body[data-hay-datos] #resultado .ventana-paso,
+body[data-conciliado] #fuente-registro .ventana-paso {
+  background: var(--c-acento);
+  color: var(--c-acento-texto);
+}
+
+/* Dato breve: separado del título por un divisor vertical, no por un punto. Vacío no ocupa lugar. */
+.ventana-meta {
+  margin-left: var(--e-1);
+  padding-left: var(--e-3);
+  border-left: 1px solid var(--c-borde-fuerte);
+  font-size: var(--t-chico);
+  line-height: 1rem;
+  color: var(--c-texto-2);
+  font-variant-numeric: tabular-nums lining-nums;
+}
+.ventana-meta:empty {
+  display: none;
+}
+/* Ventana angosta: el dato baja a su renglón, alineado con el título. */
+@container ventana (max-width: 27.99rem) {
+  /* El título puede encogerse y partirse en renglones: así el botón de plegar no salta solo a otra línea
+     cuando el título es largo (zoom 200 %, "Lo ya cargado en su sistema" en columna angosta). */
+  .ventana-barra h2 {
+    flex: 1 1 0;
+  }
+  .ventana-meta {
+    order: 2;
+    flex: 1 0 100%;
+    margin: 0;
+    padding: 0 0 var(--e-2) calc(var(--ancho-icono) + var(--e-2));
+    border-left: 0;
+  }
+}
+
+/* ---------- Controles de ventana (plegar, cerrar y los de la guía): 44 px de área, 32 px de caja visible ---------- */
+.ventana-controles {
+  display: flex;
+  align-items: center;
+  margin-left: auto;
+}
+.ventana-plegar,
+.ventana-cerrar,
+.guia-control {
+  position: relative;
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 2.75rem;
+  height: 2.75rem;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--c-texto-2);
+  cursor: pointer;
+}
+.ventana-plegar::before,
+.ventana-cerrar::before,
+.guia-control::before {
+  content: "";
+  position: absolute;
+  inset: 0.375rem;
+  border-radius: var(--r-2);
+  transition: background-color var(--m-rapido) var(--m-curva);
+}
+.ventana-plegar .icono,
+.ventana-cerrar .icono,
+.guia-control .icono {
+  position: relative;
+  width: 1.125rem;
+  height: 1.125rem;
+}
+.ventana-plegar:focus-visible,
+.ventana-cerrar:focus-visible,
+.guia-control:focus-visible {
+  outline: none;
+}
+.ventana-plegar:focus-visible::before,
+.ventana-cerrar:focus-visible::before,
+.guia-control:focus-visible::before {
+  outline: 2px solid var(--c-foco);
+  outline-offset: 1px;
+}
+@media (hover: hover) {
+  .ventana-plegar:hover,
+  .ventana-cerrar:hover,
+  .guia-control:hover {
+    color: var(--c-texto);
+  }
+  .ventana-plegar:hover::before,
+  .ventana-cerrar:hover::before,
+  .guia-control:hover::before {
+    background: var(--c-ventana-control-hover);
+  }
+}
+.ventana-plegar:active .icono,
+.ventana-cerrar:active .icono,
+.guia-control:active .icono {
+  translate: 0 1px;
+}
+
+/* El chevron apunta arriba con la ventana desplegada ("subir", plegar) y abajo con la ventana plegada. */
+.ventana-plegar .icono {
+  transform: rotate(-90deg);
+  transition: transform var(--m-rapido) var(--m-curva);
+}
+.ventana-plegar[aria-expanded="false"] .icono,
+.ventana[data-plegada] .ventana-plegar .icono {
+  transform: rotate(90deg);
+}
+
+/* ---------- Cabeza (barra de título + barra de herramientas): fija al desplazar en la planilla ---------- */
+.ventana-cabeza {
+  display: flex;
+  flex-direction: column;
+}
+
+/* ---------- Barra de herramientas ---------- */
+.ventana-herramientas {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--e-3);
+  min-height: 3.5rem;
+  padding: var(--e-2) var(--e-4);
+  background: var(--c-superficie);
+  border-bottom: 1px solid var(--c-borde);
+}
+
+/* ---------- Interior ----------
+   Adentro no hay tarjetas con borde y sombra: se separa con divisores y --c-superficie-2.
+   Es el contenedor de consultas "interior" (resumen del resultado y disposiciones de la planilla). */
+.ventana-interior {
+  container: interior / inline-size;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--e-3);
+  min-width: 0;
+  padding: var(--e-3);
+}
+@media (min-width: 40rem) {
+  .ventana-interior {
+    padding: var(--e-4);
+  }
+}
+@media (min-width: 68.75rem) {
+  .ventana-interior {
+    padding: var(--e-5);
+  }
+}
+/* Si es lo último de la ventana (barra de estado vacía), redondea su propio borde inferior. */
+.ventana-interior:last-child {
+  border-radius: 0 0 calc(var(--r-3) - 1px) calc(var(--r-3) - 1px);
+}
+.ventana-seccion {
+  display: flex;
+  flex-direction: column;
+  gap: var(--e-3);
+  padding: var(--e-4);
+  border-top: 1px solid var(--c-borde);
+}
+/* Sin avisos, sin nota y sin detalles no hay sección. */
+.ventana-seccion:not(:has(> .aviso-planilla:not(:empty):not([hidden]), > .nota-ejemplo:not([hidden]), > .detalles-registro > :not([hidden]))) {
+  display: none;
+}
+
+/* ---------- Barra de estado ----------
+   No usa hidden ni display:none cuando está vacía (las regiones role="status" tienen que existir siempre para que se anuncien):
+   mide 0 y el interior llega al pie. */
+.ventana-estado {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--e-2) var(--e-4);
+  min-height: 2.5rem;
+  padding: var(--e-2) var(--e-4);
+  background: var(--c-ventana-barra);
+  border-top: 1px solid var(--c-borde);
+  border-radius: 0 0 calc(var(--r-3) - 1px) calc(var(--r-3) - 1px);
+  font-size: var(--t-chico);
+  line-height: 1.4;
+}
+.ventana-estado:not(:has(:not(:empty))) {
+  min-height: 0;
+  padding-block: 0;
+  border-top-width: 0;
+}
+
+/* ---------- Plegada: solo la barra de título (con su dato) y, si tiene texto, la barra de estado ---------- */
+.ventana[data-plegada] .ventana-barra {
+  border-bottom-color: transparent;
+}
+.ventana[data-plegada]:not(:has(> .ventana-estado:has(:not(:empty)))) .ventana-barra {
+  border-radius: calc(var(--r-3) - 1px);
+}
+
+/* ---------- Resaltada por la guía ("Paso N"): estado activo + contorno + rótulo sobre el borde. Uno a la vez, sin capa oscura. ---------- */
+.ventana[data-guia-resaltado] {
+  border-color: var(--c-borde-fuerte);
+  box-shadow: var(--s-ventana-activa);
+  outline: 3px solid var(--c-acento);
+  outline-offset: 4px;
+  /* Lugar arriba para el rótulo "Paso N" al desplazar hasta la ventana (que no quede cortado). */
+  scroll-margin-top: 1.5rem;
+}
+.ventana[data-guia-resaltado] .ventana-barra {
+  box-shadow: inset 0 2px 0 var(--c-acento);
+}
+.ventana[data-guia-resaltado]::before {
+  content: "Paso " attr(data-guia-resaltado);
+  position: absolute;
+  bottom: calc(100% + 7px);
+  left: var(--e-4);
+  padding: 0.125rem 0.5rem;
+  border-radius: var(--r-1) var(--r-1) 0 0;
+  background: var(--c-acento);
+  color: var(--c-acento-texto);
+  font-size: var(--t-rotulo);
+  font-weight: 600;
+  line-height: 1.3;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .ventana[data-guia-resaltado] {
+    animation: latido 300ms var(--m-curva) 2;
+  }
+}
+@keyframes latido {
+  50% {
+    outline-offset: 8px;
+  }
+}
+
+/* ---------- Cabeza fija de la planilla (hay lugar para que la cabeza no tape el contenido) ---------- */
+@media (min-width: 44rem) and (min-height: 37.5rem) {
+  .ventana-planilla .ventana-cabeza {
+    position: sticky;
+    top: 0;
+    z-index: 5;
+  }
+  .ventana-planilla {
+    --margen-cabeza: var(--alto-cabeza-planilla);
+  }
+}
+
+@media print {
+  .ventana {
+    box-shadow: none;
+  }
+  .ventana-plegar {
+    display: none;
+  }
+}

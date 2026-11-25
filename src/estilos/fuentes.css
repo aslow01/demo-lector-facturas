@@ -1,0 +1,209 @@
+/* Fuentes de carga (pasos 1 y 2): contenido de las ventanas "Facturas recibidas" y "Lo ya cargado en su sistema".
+   El marco, la barra de título, el número de paso y la barra de estado son de ventanas.css. */
+
+.fuente-explicacion {
+  max-width: 62ch;
+  font-size: 0.9375rem;
+  color: var(--c-texto-2);
+}
+
+.fuente-ejemplo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 var(--e-3);
+}
+
+/* ---------- Pegar direcciones ---------- */
+.url {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--e-2);
+  padding-bottom: var(--e-2);
+}
+.url label {
+  font-size: var(--t-chico);
+  font-weight: 600;
+}
+
+/* ---------- Zona de carga ---------- */
+/* La zona a todo el ancho y, debajo, "Quitar registro" como botón de texto alineado a la derecha. */
+.zona-fila {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--e-1);
+}
+.zona-fila .zona {
+  min-width: 0;
+}
+.zona-fila .boton-texto {
+  align-self: flex-end;
+}
+
+.zona {
+  position: relative;
+  display: flex;
+  min-height: 5.5rem;
+  border: 1.5px dashed var(--c-borde-fuerte);
+  border-radius: var(--r-3);
+  background: var(--c-superficie-2);
+  transition: background-color var(--m-rapido) var(--m-curva), border-color var(--m-rapido) var(--m-curva);
+}
+@media (min-width: 40rem) {
+  .zona,
+  .zona-registro {
+    min-height: 7.5rem;
+  }
+}
+
+/* El <input type=file> cubre toda la zona, sin verse: recibe el clic, el arrastre y el foco. */
+.zona-input {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.zona-etiqueta {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--e-2);
+  min-width: 0;
+  padding: var(--e-4);
+  text-align: center;
+}
+
+.zona-texto {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  max-width: 100%;
+  min-width: 0;
+}
+.zona-titulo {
+  font-weight: 600;
+  line-height: 1.3;
+}
+.zona-ayuda {
+  font-size: var(--t-chico);
+  line-height: 1.4;
+  color: var(--c-texto-2);
+}
+
+.zona-icono {
+  width: 1.5rem;
+  height: 1.5rem;
+  color: var(--c-acento);
+  transition: transform var(--m-rapido) var(--m-curva);
+}
+.zona-icono-ok,
+.zona-accion,
+.zona-progreso {
+  display: none;
+}
+
+/* hover y foco */
+@media (hover: hover) {
+  .zona:hover {
+    border-style: solid;
+    border-color: var(--c-acento);
+    background: var(--c-acento-suave);
+  }
+}
+.zona:has(.zona-input:focus-visible) {
+  border-style: solid;
+  border-color: var(--c-acento);
+  background: var(--c-acento-suave);
+  outline: 2px solid var(--c-foco);
+  outline-offset: 2px;
+}
+
+/* arrastrando */
+.zona[data-estado="arrastrando"] {
+  border: 2px solid var(--c-acento);
+  background: var(--c-acento-suave);
+}
+.zona[data-estado="arrastrando"] .zona-icono {
+  transform: translateY(-2px);
+}
+
+/* procesando: avance en lugar del ícono */
+.zona[data-estado="procesando"] {
+  border-style: solid;
+  border-color: var(--c-borde-fuerte);
+  background: var(--c-superficie-2);
+}
+.zona[data-estado="procesando"] .zona-icono-subir {
+  display: none;
+}
+.zona[data-estado="procesando"] .zona-progreso {
+  display: block;
+  width: min(100%, 18rem);
+}
+.zona[data-estado="procesando"] .zona-ayuda {
+  overflow: hidden;
+  font-family: var(--t-mono);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* con datos: una fila compacta con la acción para agregar más */
+.zona[data-estado="con-datos"] {
+  min-height: auto;
+  border-style: solid;
+  border-color: var(--c-borde-fuerte);
+}
+.zona[data-estado="con-datos"] .zona-etiqueta {
+  flex-direction: row;
+  justify-content: flex-start;
+  gap: var(--e-3);
+  min-height: 3.25rem;
+  padding: var(--e-2) var(--e-4);
+  text-align: left;
+}
+.zona[data-estado="con-datos"] .zona-icono-subir,
+.zona[data-estado="con-datos"] .zona-ayuda {
+  display: none;
+}
+.zona[data-estado="con-datos"] .zona-icono-ok {
+  display: block;
+  color: var(--c-ok-r);
+}
+.zona[data-estado="con-datos"] .zona-texto {
+  flex: 1;
+}
+.zona[data-estado="con-datos"] .zona-accion {
+  display: inline;
+  color: var(--c-acento);
+  font-weight: 500;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  white-space: nowrap;
+}
+
+/* error */
+.zona[data-estado="error"] {
+  border-style: solid;
+  border-color: var(--c-diferencia-r);
+}
+.zona[data-estado="error"] .zona-ayuda {
+  color: var(--c-diferencia-t);
+}
+
+/* Zona con datos en pantallas angostas: la acción baja de renglón en vez de partir el texto. */
+.zona[data-estado="con-datos"] .zona-etiqueta {
+  flex-wrap: wrap;
+  gap: var(--e-1) var(--e-3);
+}
+.zona[data-estado="con-datos"] .zona-texto {
+  flex: 1 1 9rem;
+}

@@ -1,0 +1,12 @@
+/* Índice de estilos. Vite los empaqueta en un solo CSS (cumple style-src 'self').
+   ventanas.css (escritorio y ventanas) y guia.css (guía "¿Cómo funciona?") son de la etapa 2. */
+@import "./estilos/tokens.css";
+@import "./estilos/base.css";
+@import "./estilos/componentes.css";
+@import "./estilos/ventanas.css";
+@import "./estilos/encabezado.css";
+@import "./estilos/fuentes.css";
+@import "./estilos/resultado.css";
+@import "./estilos/planilla.css";
+@import "./estilos/pie.css";
+@import "./estilos/guia.css";

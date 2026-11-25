@@ -1,0 +1,2 @@
+# Los PDF de ejemplo se versionan byte a byte: un cambio de fin de línea rompe sus desplazamientos internos.
+*.pdf binary

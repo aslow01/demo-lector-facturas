@@ -1,0 +1,45 @@
+# Direcciones de QR de facturas ficticias (empresas, CUIT, importes y CAE inventados).
+# Generado el 2026-11-18 con `npm run ejemplos`. Una dirección por línea; las que empiezan con # son comentarios.
+
+# ejemplo-01.png: Factura A normal: ya cargada en el sistema.
+# Factura A 3-1245, CUIT 30-99000001-4, PES 118.470,50
+https://www.afip.gob.ar/fe/qr/?p=eyJ2ZXIiOjEsIm1vbmVkYSI6IlBFUyIsImN0eiI6MSwidGlwb0NvZEF1dCI6IkUiLCJjb2RBdXQiOjcwMDAwMDAwMDA3OTE5LCJmZWNoYSI6IjIwMjYtMTAtMDUiLCJjdWl0IjozMDk5MDAwMDAxNCwicHRvVnRhIjozLCJ0aXBvQ21wIjoxLCJucm9DbXAiOjEyNDUsImltcG9ydGUiOjExODQ3MC41fQ==
+
+# ejemplo-02.png: Importe distinto al del sistema (45.200,00 contra 45.020,00).
+# Factura B 1-876, CUIT 30-99000101-0, PES 45.200,00
+https://www.afip.gob.ar/fe/qr/?p=eyJ2ZXIiOjEsIm1vbmVkYSI6IlBFUyIsImN0eiI6MSwidGlwb0NvZEF1dCI6IkUiLCJjb2RBdXQiOjcwMDAwMDAwMDE1ODM4LCJmZWNoYSI6IjIwMjYtMTAtMDciLCJjdWl0IjozMDk5MDAwMTAxMCwicHRvVnRhIjoxLCJ0aXBvQ21wIjo2LCJucm9DbXAiOjg3NiwiaW1wb3J0ZSI6NDUyMDB9
+
+# ejemplo-03.png: Factura B que el sistema tiene cargada dos veces, con el mismo importe.
+# Factura B 2-31, CUIT 33-99000201-6, PES 9.350,25
+https://www.afip.gob.ar/fe/qr/?p=eyJ2ZXIiOjEsIm1vbmVkYSI6IlBFUyIsImN0eiI6MSwidGlwb0NvZEF1dCI6IkUiLCJjb2RBdXQiOjcwMDAwMDAwMDIzNzU3LCJmZWNoYSI6IjIwMjYtMTAtMDkiLCJjdWl0IjozMzk5MDAwMjAxNiwicHRvVnRhIjoyLCJ0aXBvQ21wIjo2LCJucm9DbXAiOjMxLCJpbXBvcnRlIjo5MzUwLjI1fQ==
+
+# ejemplo-04.png: Factura en dólares que falta cargar.
+# Factura A 3-1251, CUIT 30-99000001-4, DOL 1.250,00
+https://www.afip.gob.ar/fe/qr/?p=eyJ2ZXIiOjEsIm1vbmVkYSI6IkRPTCIsImN0eiI6MTA1MCwidGlwb0NvZEF1dCI6IkUiLCJjb2RBdXQiOjcwMDAwMDAwMDMxNjc2LCJmZWNoYSI6IjIwMjYtMTAtMTIiLCJjdWl0IjozMDk5MDAwMDAxNCwicHRvVnRhIjozLCJ0aXBvQ21wIjoxLCJucm9DbXAiOjEyNTEsImltcG9ydGUiOjEyNTB9
+
+# ejemplo-05.png: Misma factura que la fila 1, recibida dos veces: duplicado de la planilla.
+# Factura A 3-1245, CUIT 30-99000001-4, PES 118.470,50
+https://www.afip.gob.ar/fe/qr/?p=eyJ2ZXIiOjEsIm1vbmVkYSI6IlBFUyIsImN0eiI6MSwidGlwb0NvZEF1dCI6IkUiLCJjb2RBdXQiOjcwMDAwMDAwMDA3OTE5LCJmZWNoYSI6IjIwMjYtMTAtMDUiLCJjdWl0IjozMDk5MDAwMDAxNCwicHRvVnRhIjozLCJ0aXBvQ21wIjoxLCJucm9DbXAiOjEyNDUsImltcG9ydGUiOjExODQ3MC41fQ==
+
+# ejemplo-06.png: QR con los números como texto. En el sistema está cargada con el CUIT de otro proveedor.
+# Factura C 1-902, CUIT 30-99000101-0, PES 30.875,40
+https://www.afip.gob.ar/fe/qr/?p=eyJ2ZXIiOjEsIm1vbmVkYSI6IlBFUyIsImN0eiI6MSwidGlwb0NvZEF1dCI6IkUiLCJjb2RBdXQiOjcwMDAwMDAwMDM5NTk1LCJmZWNoYSI6IjIwMjYtMTAtMTQiLCJjdWl0IjoiMzA5OTAwMDEwMTAiLCJwdG9WdGEiOiIxIiwidGlwb0NtcCI6IjExIiwibnJvQ21wIjoiOTAyIiwiaW1wb3J0ZSI6IjMwODc1LjQwIn0=
+
+# ejemplo-07.png: QR con base64 sin relleno. Falta cargar.
+# Factura B 2-77, CUIT 33-99000201-6, PES 6.120,00
+https://www.afip.gob.ar/fe/qr/?p=eyJ2ZXIiOjEsIm1vbmVkYSI6IlBFUyIsImN0eiI6MSwidGlwb0NvZEF1dCI6IkUiLCJjb2RBdXQiOjcwMDAwMDAwMDQ3NTE0LCJmZWNoYSI6IjIwMjYtMTAtMTUiLCJjdWl0IjozMzk5MDAwMjAxNiwicHRvVnRhIjoyLCJ0aXBvQ21wIjo2LCJucm9DbXAiOjc3LCJpbXBvcnRlIjo2MTIwfQ
+
+# ejemplo-08.png: CUIT con dígito verificador inválido.
+# Factura C 4-12, CUIT 30-99000001-5, PES 15.000,00
+https://www.afip.gob.ar/fe/qr/?p=eyJ2ZXIiOjEsIm1vbmVkYSI6IlBFUyIsImN0eiI6MSwidGlwb0NvZEF1dCI6IkUiLCJjb2RBdXQiOjcwMDAwMDAwMDU1NDMzLCJmZWNoYSI6IjIwMjYtMTAtMTYiLCJjdWl0IjozMDk5MDAwMDAxNSwicHRvVnRhIjo0LCJ0aXBvQ21wIjoxMSwibnJvQ21wIjoxMiwiaW1wb3J0ZSI6MTUwMDB9
+
+# ejemplo-09.png: Total en cero.
+# Factura B 1-880, CUIT 30-99000101-0, PES 0,00
+https://www.afip.gob.ar/fe/qr/?p=eyJ2ZXIiOjEsIm1vbmVkYSI6IlBFUyIsImN0eiI6MSwidGlwb0NvZEF1dCI6IkUiLCJjb2RBdXQiOjcwMDAwMDAwMDYzMzUyLCJmZWNoYSI6IjIwMjYtMTAtMTciLCJjdWl0IjozMDk5MDAwMTAxMCwicHRvVnRhIjoxLCJ0aXBvQ21wIjo2LCJucm9DbXAiOjg4MCwiaW1wb3J0ZSI6MH0=
+
+# ejemplo-10.png: Fecha futura.
+# Factura A 2-95, CUIT 33-99000201-6, PES 22.800,00
+https://www.afip.gob.ar/fe/qr/?p=eyJ2ZXIiOjEsIm1vbmVkYSI6IlBFUyIsImN0eiI6MSwidGlwb0NvZEF1dCI6IkUiLCJjb2RBdXQiOjcwMDAwMDAwMDcxMjcxLCJmZWNoYSI6IjIwMjYtMTItMTciLCJjdWl0IjozMzk5MDAwMjAxNiwicHRvVnRhIjoyLCJ0aXBvQ21wIjoxLCJucm9DbXAiOjk1LCJpbXBvcnRlIjoyMjgwMH0=
+
+# ejemplo-11.png: Imagen sin QR legible: se puede completar a mano.
+# (sin dirección: representa una imagen sin QR legible)

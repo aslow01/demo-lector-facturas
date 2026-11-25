@@ -1,0 +1,1047 @@
+/* Planilla: ventana con barra de herramientas (filtros y exportar), tabla en tres disposiciones, panel de edición,
+   detalles del registro y, en la barra de estado, totales y "Vaciar planilla".
+   El marco, la barra de título y la cabeza fija son de ventanas.css. Las disposiciones de la tabla dependen del ancho del
+   interior de la ventana (contenedor "interior"), no del de la pantalla: completa >= 66rem · compacta 40rem a 66rem · lista < 40rem.
+   La tabla nunca desplaza en horizontal. */
+
+/* El interior de la planilla no tiene relleno lateral: la tabla toca los bordes y la franja de cada fila queda pegada al marco. */
+.ventana-planilla .ventana-interior {
+  gap: 0;
+  padding: 0;
+}
+
+/* Destinos de desplazamiento y foco: que la cabeza fija (cuando la hay) no los tape (A6, WCAG 2.4.11). */
+#titulo-planilla,
+.tabla-envoltorio,
+#tabla tbody tr,
+.detalle-bloque h3 {
+  scroll-margin-top: calc(var(--margen-cabeza, 0rem) + 0.5rem);
+}
+
+/* ---------- Barra de herramientas ---------- */
+.barra-planilla {
+  flex-wrap: wrap;
+}
+body:not([data-hay-datos]) .barra-planilla {
+  display: none;
+}
+
+.filtros {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.filtros legend {
+  /* flotado: deja de ser la leyenda "dibujada sobre el borde" y se alinea como un elemento más. */
+  float: left;
+  margin-right: var(--e-3);
+  padding: 0;
+  font-size: var(--t-chico);
+  font-weight: 600;
+  white-space: nowrap;
+}
+/* Sin registro no hay nada que filtrar. */
+body:not([data-conciliado]) .filtros {
+  display: none;
+}
+
+.filtro-opcion {
+  position: relative;
+  flex: none;
+}
+.filtro-opcion + .filtro-opcion {
+  margin-left: -1px;
+}
+.filtro-opcion input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+.filtro-opcion label {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  min-height: 2.75rem;
+  padding: 0 var(--e-3);
+  border: 1px solid var(--c-borde-fuerte);
+  background: var(--c-superficie);
+  color: var(--c-texto);
+  font-size: var(--t-tabla);
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.filtro-opcion:first-of-type label {
+  border-radius: var(--r-2) 0 0 var(--r-2);
+}
+.filtro-opcion:last-of-type label {
+  border-radius: 0 var(--r-2) var(--r-2) 0;
+}
+@media (hover: hover) {
+  .filtro-opcion input:not(:checked):hover + label {
+    background: var(--c-superficie-2);
+  }
+}
+.filtro-opcion input:checked + label {
+  background: var(--c-texto);
+  border-color: var(--c-texto);
+  color: var(--c-invertido-texto);
+}
+.filtro-opcion input:focus-visible + label {
+  position: relative;
+  z-index: 1;
+  outline: 2px solid var(--c-foco);
+  outline-offset: 2px;
+}
+.conteo {
+  font-family: var(--t-mono);
+  font-size: var(--t-chico);
+  font-variant-numeric: tabular-nums;
+  color: var(--c-texto-2);
+}
+.filtro-opcion input:checked + label .conteo {
+  color: inherit;
+}
+/* Conteo en cero: sigue elegible, pero se apaga. */
+.filtro-opcion:has(.conteo[data-cero]) label,
+.filtro-opcion input:not(:checked) + label:has(.conteo[data-cero]) {
+  color: var(--c-texto-3);
+}
+
+.boton-exportar {
+  flex: none;
+}
+
+/* ---------- Antigüedad de lo que falta cargar: orden, fecha de referencia y umbral (solo con registro) ---------- */
+.antiguedad {
+  border-bottom: 1px solid var(--c-borde);
+}
+body:not([data-conciliado]) .antiguedad {
+  display: none;
+}
+/* El bloque es un <details>: abierto en pantallas anchas, plegado en celular (main.ts fija el estado inicial). */
+.antiguedad-resumen {
+  display: flex;
+  align-items: center;
+  gap: var(--e-2);
+  min-height: 2.75rem;
+  padding: 0 var(--e-4);
+  color: var(--c-texto-2);
+  cursor: pointer;
+  list-style: none;
+}
+.antiguedad-resumen::-webkit-details-marker {
+  display: none;
+}
+.antiguedad-resumen .icono {
+  flex: none;
+  width: 1rem;
+  height: 1rem;
+  transition: transform var(--m-rapido) var(--m-curva);
+}
+.antiguedad[open] > .antiguedad-resumen .icono {
+  transform: rotate(90deg);
+}
+/* Lo activo ("· desde 30 días"): va dentro del mismo texto del rótulo (si no entra, pasa al renglón siguiente alineado con él) y solo
+   se muestra con el bloque plegado: abierto, los controles ya lo dicen. */
+.antiguedad-resumen {
+  padding-block: 0.375rem;
+}
+.antiguedad-activo {
+  font-weight: 400;
+}
+.antiguedad-activo:not(:empty)::before {
+  content: " \00b7  ";
+  white-space: pre;
+}
+.antiguedad[open] .antiguedad-activo {
+  display: none;
+}
+/* El rótulo puede romper una palabra antes de ensanchar la página. Con el texto al 200 % ("ANTIGÜEDAD" en mayúsculas y con
+   tracking mide más que el renglón) se escribe en minúsculas y sin separación entre letras. */
+.antiguedad-resumen > span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+@container ventana (max-width: 14rem) {
+  .antiguedad-resumen {
+    text-transform: none;
+    letter-spacing: 0;
+  }
+}
+.antiguedad-resumen:focus-visible {
+  outline: 2px solid var(--c-foco);
+  outline-offset: -2px;
+}
+@media (hover: hover) {
+  .antiguedad-resumen:hover {
+    color: var(--c-texto);
+  }
+}
+.antiguedad-cuerpo {
+  display: flex;
+  flex-direction: column;
+  gap: var(--e-2);
+  padding: 0 var(--e-4) var(--e-3);
+}
+.antiguedad-campos {
+  display: flex;
+  flex-wrap: wrap;
+  /* Arriba y no abajo: un campo inválido suma su mensaje debajo y no debe empujar a los demás. */
+  align-items: flex-start;
+  gap: var(--e-2) var(--e-4);
+}
+.campo-barra {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 0;
+}
+.campo-barra label {
+  color: var(--c-texto-2);
+  font-size: var(--t-chico);
+  font-weight: 600;
+  white-space: nowrap;
+}
+/* Mensaje de un valor inválido (lo crea main.ts justo después del campo). No ensancha el campo: ocupa su ancho y, cuando hay
+   error, el campo pasa a medir al menos 16 rem (o el renglón entero) para que el texto no quede en una columna angosta. */
+.campo-barra > .error-campo {
+  width: 0;
+  min-width: 100%;
+}
+.campo-barra:has(> .error-campo:not([hidden])) {
+  min-width: min(16rem, 100%);
+}
+.campo-barra select {
+  width: auto;
+  max-width: 100%;
+}
+.campo-barra input[type="date"] {
+  width: 10.5rem;
+}
+.campo-barra-dias input {
+  width: 7rem;
+}
+.antiguedad .nota {
+  max-width: 62ch;
+}
+/* Angosto: el orden ocupa su renglón; la fecha y los días comparten el siguiente. */
+@media (max-width: 39.99rem) {
+  .campo-barra select {
+    width: 100%;
+  }
+  .campo-barra:has(select) {
+    flex: 1 1 100%;
+  }
+  .campo-barra:has(input[type="date"]) {
+    flex: 1 1 9rem;
+  }
+  .campo-barra-dias {
+    flex: 0 1 7rem;
+  }
+  .campo-barra input[type="date"],
+  .campo-barra-dias input {
+    width: 100%;
+  }
+}
+
+/* ---------- Tabla (disposición completa) ----------
+   La ventana ya es el marco: la tabla no lleva borde, radio ni sombra propios. */
+.tabla-envoltorio {
+  overflow-x: auto; /* red de seguridad: no debería activarse a ningún ancho */
+}
+
+#tabla {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: var(--t-tabla);
+  line-height: 1.4;
+}
+
+#tabla th {
+  height: 2.5rem;
+  padding: var(--e-2) var(--e-3);
+  background: var(--c-superficie-2);
+  border-bottom: 1px solid var(--c-borde);
+  color: var(--c-texto-3);
+  font-size: var(--t-rotulo);
+  font-weight: 600;
+  line-height: 1.3;
+  letter-spacing: 0.06em;
+  text-align: left;
+  text-transform: uppercase;
+  vertical-align: middle;
+}
+#tabla td {
+  padding: var(--e-3);
+  border-bottom: 1px solid var(--c-borde);
+  vertical-align: top;
+}
+#tabla tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+/* Anchos de columna */
+.c-num {
+  width: 2.5rem;
+}
+.c-concilia {
+  width: 14rem;
+}
+.c-emisor {
+  width: 9.5rem;
+}
+.c-fecha {
+  width: 6.5rem;
+}
+.c-importe {
+  width: 9.5rem;
+}
+.c-lectura {
+  width: 10.5rem;
+}
+.c-acciones {
+  width: 6rem;
+}
+#tabla th.c-importe,
+#tabla td.c-importe {
+  text-align: right;
+}
+
+/* Contenido de las celdas */
+.c-num {
+  color: var(--c-texto-3);
+  font-variant-numeric: tabular-nums;
+}
+.c-comprobante .linea-1 {
+  display: block;
+  font-weight: 600;
+}
+.c-comprobante .linea-2,
+.c-emisor,
+.meta-compacta .codigo {
+  font-family: var(--t-mono);
+  font-size: var(--t-chico);
+  white-space: nowrap;
+}
+.c-comprobante .linea-2 {
+  display: block;
+  color: var(--c-texto-2);
+}
+.c-fecha {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.c-importe {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums lining-nums;
+  white-space: nowrap;
+}
+.c-lectura {
+  color: var(--c-texto-3);
+  font-size: var(--t-chico);
+}
+/* "Sin dato": un solo marcador en todas las celdas (el texto para lectores de pantalla va aparte). */
+.sin-dato {
+  color: var(--c-texto-3);
+}
+.meta-compacta,
+.lectura-compacta {
+  display: none;
+}
+.lectura-ok {
+  color: var(--c-texto-3);
+}
+.c-lectura .etiqueta-estado {
+  display: flex;
+  width: fit-content;
+  margin-top: 0.25rem;
+}
+.c-lectura .etiqueta-estado:first-child {
+  margin-top: 0;
+}
+.meta-compacta {
+  margin-top: 0.125rem;
+  color: var(--c-texto-2);
+  font-size: var(--t-chico);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Una línea secundaria por fila. Ya no se recorta a dos renglones: el detalle termina con la acción ("Dé de baja la carga…") o lista
+   las copias del sistema, y un "…" taparía justo lo que la persona tiene que hacer. La fila crece lo que haga falta. */
+.detalle {
+  margin-top: 0.375rem;
+  overflow-wrap: anywhere;
+  color: var(--c-texto-2);
+  font-size: var(--t-chico);
+  line-height: 1.4;
+}
+.detalle .mas {
+  color: var(--c-texto-3);
+}
+/* Los códigos y los montos del detalle nunca se parten: el renglón corta entre palabras (E7). */
+.detalle .codigo,
+.detalle .monto,
+.detalle-bloque li .codigo,
+.detalle-bloque li .monto {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums lining-nums;
+}
+.detalle .codigo,
+.detalle-bloque li .codigo {
+  font-family: var(--t-mono);
+  font-size: 0.92em;
+}
+.detalle .monto,
+.detalle-bloque li .monto {
+  font-weight: 600;
+}
+
+/* "30 días o más": segunda etiqueta junto a "Falta cargar". Lleva un filo del tono para distinguirla de la de estado. */
+.etiqueta-antigua {
+  box-shadow: inset 0 0 0 1px var(--tono-r);
+}
+.c-concilia .etiqueta-estado + .etiqueta-estado {
+  margin: 0.25rem 0 0 0.25rem;
+}
+/* La línea de detalle de una fila antigua ("Emitida hace 45 días…") toma el tono de aviso: el color no va solo, la etiqueta lo dice. */
+#tabla tr[data-antigua] .detalle {
+  color: var(--c-revisar-t);
+}
+
+/* Sin registro no hay columna de conciliación. */
+#tabla.sin-conciliar .c-concilia {
+  display: none;
+}
+
+/* ---------- Estado visual de la fila: una sola señal de color, la franja izquierda ---------- */
+#tabla tbody tr {
+  --franja: transparent;
+}
+#tabla tr[data-lectura="revisar"] {
+  --franja: var(--c-revisar-r);
+}
+#tabla tr[data-lectura="sin-qr"] {
+  --franja: var(--c-diferencia-r);
+}
+#tabla tr[data-concilia="falta"] {
+  --franja: var(--c-pendiente-r);
+}
+#tabla tr[data-concilia="revisar"] {
+  --franja: var(--c-revisar-r);
+}
+#tabla tr[data-concilia="ya-cargada"] {
+  --franja: var(--c-ok-r);
+}
+#tabla tr[data-concilia="otro-importe"],
+#tabla tr[data-concilia="otro-emisor"] {
+  --franja: var(--c-diferencia-r);
+}
+#tabla tr[data-concilia="no-conciliable"] {
+  --franja: var(--c-neutro-r);
+}
+#tabla tr[data-duplicada] {
+  --franja: var(--c-neutro-r);
+}
+/* La factura duplicada es un estado propio de atención (C1): franja y sello en tono "revisar", no en neutro ni en verde.
+   Un comprobante "ya cargado" que el sistema trae dos veces (`data-dos-veces`) usa la misma franja. */
+#tabla tr[data-concilia="duplicada"],
+#tabla tr[data-dos-veces] {
+  --franja: var(--c-revisar-r);
+}
+#tabla tr[data-duplicada] td {
+  color: var(--c-texto-2);
+}
+#tabla tr[data-duplicada] .c-importe {
+  text-decoration: line-through;
+}
+
+#tabla tbody tr > td:first-child {
+  box-shadow: inset 4px 0 0 var(--franja);
+}
+
+@media (hover: hover) {
+  #tabla tbody tr:not(.fila-edicion):hover > td {
+    background: var(--c-superficie-2);
+  }
+}
+
+/* Fila en edición: franja gruesa y fondo propio, también en su panel. */
+#tabla tr.fila-editando {
+  --franja: var(--c-acento);
+}
+#tabla tr.fila-editando > td:first-child,
+#tabla tr.fila-edicion > td {
+  box-shadow: inset 6px 0 0 var(--c-acento);
+}
+#tabla tr.fila-editando > td,
+#tabla tr.fila-edicion > td {
+  background: var(--c-edicion);
+}
+
+/* Fila recién agregada: destello de fondo, una vez. */
+@keyframes destello {
+  from {
+    background-color: var(--c-acento-suave);
+  }
+  to {
+    background-color: transparent;
+  }
+}
+#tabla tr.fila-nueva > td {
+  animation: destello 1200ms var(--m-curva) 1;
+}
+
+/* ---------- Panel de edición (debajo de la fila) ----------
+   El <td> contiene directamente: título oculto, .campos-edicion, .edicion-lectura y .edicion-acciones. */
+#tabla tr.fila-edicion > td {
+  padding: var(--e-5);
+}
+.campos-edicion {
+  display: grid;
+  gap: var(--e-3) var(--e-4);
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+.campo {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-content: start;
+  gap: 0.25rem;
+  min-width: 0;
+}
+.campo-etiqueta {
+  grid-column: 1;
+  color: var(--c-texto-2);
+  font-size: var(--t-chico);
+  font-weight: 600;
+}
+.campo-editado {
+  grid-column: 2;
+  align-self: end;
+  color: var(--c-acento);
+  font-size: var(--t-chico);
+  font-weight: 600;
+}
+.entrada {
+  grid-column: 1 / -1;
+  min-height: 2.75rem;
+}
+.entrada-mono,
+.mono {
+  font-family: var(--t-mono);
+  font-size: var(--t-chico);
+}
+/* Campo editado a mano: franja interna de 3 px, además del texto "Editado". */
+.entrada.editada {
+  box-shadow: inset 3px 0 0 var(--c-acento);
+}
+.error-campo {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.375rem;
+  color: var(--c-diferencia-t);
+  font-size: var(--t-chico);
+  line-height: 1.4;
+}
+.error-campo .icono {
+  width: 0.875rem;
+  height: 0.875rem;
+  margin-top: 0.125rem;
+}
+.edicion-lectura {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+  margin-top: var(--e-4);
+  color: var(--c-texto-2);
+  font-size: var(--t-chico);
+  line-height: 1.4;
+}
+.edicion-avisos {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+.edicion-avisos-titulo {
+  color: var(--c-texto);
+  font-weight: 600;
+}
+.edicion-avisos ul,
+.motivos {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  padding-left: var(--e-4);
+  list-style: disc;
+}
+.edicion-acciones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--e-2) var(--e-3);
+  margin-top: var(--e-4);
+}
+
+/* ---------- Avisos y nota del ejemplo ---------- */
+.aviso-planilla:empty {
+  display: none;
+}
+
+/* ---------- Detalles del registro: dos bloques con franja del tono, sin tarjeta ---------- */
+.detalles-registro {
+  display: grid;
+  gap: var(--e-3);
+  grid-template-columns: minmax(0, 1fr);
+}
+@container interior (min-width: 56rem) {
+  .detalles-registro {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: stretch;
+  }
+}
+.detalle-bloque {
+  display: flex;
+  flex-direction: column;
+  gap: var(--e-2);
+  padding: var(--e-3) var(--e-4);
+  background: var(--c-superficie-2);
+  border-left: 4px solid var(--tono-r, var(--c-neutro-r));
+  border-radius: var(--r-2);
+}
+.detalle-bloque h3 {
+  font-size: var(--t-h3);
+  font-weight: 600;
+  line-height: 1.3;
+}
+.detalle-bloque ul {
+  display: flex;
+  flex-direction: column;
+}
+.detalle-bloque li {
+  padding: var(--e-2) 0;
+  border-top: 1px solid var(--c-borde);
+  font-size: var(--t-tabla);
+  font-variant-numeric: tabular-nums;
+}
+.detalle-bloque li:first-child {
+  border-top: 0;
+}
+/* "y 12 más": cierra la lista cuando se recortó a 50 renglones. */
+.detalle-bloque li.lista-resto {
+  color: var(--c-texto-2);
+  font-size: var(--t-chico);
+}
+
+/* ---------- Cierre: barra de estado de la planilla (totales a la izquierda, "Vaciar planilla" a la derecha) ---------- */
+.cierre {
+  justify-content: space-between;
+  gap: var(--e-3) var(--e-5);
+}
+.totales {
+  display: flex;
+  flex-direction: column;
+  gap: var(--e-1);
+  min-width: 0;
+}
+.totales ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 var(--e-5);
+}
+.totales li {
+  font-size: var(--t-tabla);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums lining-nums;
+}
+.totales li .nota {
+  font-weight: 400;
+}
+
+/* =========================================================================
+   Disposición compacta: contenedor de 40rem a 66rem (la CUIT y la fecha pasan a la columna "Comprobante")
+   ========================================================================= */
+@container interior (max-width: 65.99rem) {
+  #tabla .c-emisor,
+  #tabla .c-fecha,
+  #tabla .c-lectura {
+    display: none;
+  }
+  #tabla .c-concilia {
+    width: 13.5rem;
+  }
+  #tabla .c-importe {
+    width: 9rem;
+  }
+  #tabla td {
+    padding: 0.625rem var(--e-2);
+  }
+  #tabla th {
+    padding-inline: var(--e-2);
+  }
+  .meta-compacta {
+    display: block;
+  }
+  .lectura-compacta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+    margin-top: 0.375rem;
+  }
+  /* Sin registro la única columna de estado es "Lectura". */
+  #tabla.sin-conciliar .c-lectura {
+    display: table-cell;
+    width: 10rem;
+  }
+  #tabla.sin-conciliar .lectura-compacta {
+    display: none;
+  }
+  .campos-edicion {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* =========================================================================
+   Lista: contenedor de menos de 40rem (la misma tabla, redibujada con CSS; sin tarjetas: cada fila es un bloque a todo el ancho
+   de la ventana, separado por un divisor de 1 px, con la franja a la izquierda). Los hijos de las celdas "Conciliación" y
+   "Comprobante" pasan a ser elementos de la grilla de la fila (display: contents).
+
+     1 · ✓ Ya cargada                       (la etiqueta sola en su renglón: nunca se parte)
+     Factura A                  $ 118.470,50
+     0003-00001245
+     30-99000001-4 · 05/10/2026   [Editar]
+     detalle (si hay)
+   ========================================================================= */
+@container interior (max-width: 39.99rem) {
+  .tabla-envoltorio {
+    overflow: visible;
+  }
+
+  #tabla,
+  #tabla tbody {
+    display: block;
+  }
+  /* Cabecera fuera de la vista, pero accesible (no display:none). */
+  #tabla thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+
+  #tabla tbody tr {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: start;
+    column-gap: var(--e-2);
+    padding: var(--e-3);
+    border-bottom: 1px solid var(--c-borde);
+    box-shadow: inset 4px 0 0 var(--franja);
+  }
+  #tabla tbody tr:last-child {
+    border-bottom: 0;
+  }
+  #tabla tbody tr.fila-editando {
+    box-shadow: inset 6px 0 0 var(--c-acento);
+    background: var(--c-edicion);
+  }
+  /* display va aparte y con poca especificidad: .c-concilia y .c-comprobante (contents) y .c-emisor (none) tienen que poder pisarlo. */
+  #tabla tbody tr > td {
+    display: block;
+  }
+  #tabla tbody tr > td,
+  #tabla tbody tr > td:first-child,
+  #tabla tr.fila-editando > td,
+  #tabla tr.fila-editando > td:first-child {
+    padding: 0;
+    border: 0;
+    background: none;
+    box-shadow: none;
+  }
+  @media (hover: hover) {
+    #tabla tbody tr:not(.fila-edicion):hover > td {
+      background: none;
+    }
+    #tabla tbody tr:not(.fila-edicion):not(.fila-editando):hover {
+      background: var(--c-superficie-2);
+    }
+  }
+
+  /* Renglón 1: "1 · etiqueta" */
+  #tabla .c-num {
+    grid-column: 1;
+    grid-row: 1;
+    align-self: center;
+  }
+  #tabla .c-num::after {
+    content: " ·";
+  }
+  #tabla .c-concilia,
+  #tabla .c-comprobante {
+    display: contents;
+  }
+  #tabla .c-concilia .etiqueta-estado,
+  #tabla.sin-conciliar .c-lectura {
+    grid-column: 2 / -1;
+    grid-row: 1;
+    align-self: center;
+    justify-self: start;
+  }
+  #tabla.sin-conciliar .c-lectura {
+    display: block;
+    width: auto;
+  }
+  /* "30 días o más" comparte el renglón 1 con la etiqueta de estado: va a la derecha, sobre la columna del importe. */
+  #tabla .c-concilia .etiqueta-antigua {
+    grid-column: 3;
+    justify-self: end;
+    margin: 0;
+  }
+  /* Las etiquetas largas ("Cargada dos veces en el sistema") pueden pasar a dos renglones en un teléfono muy angosto en lugar de salirse de la tarjeta. */
+  #tabla .c-concilia .etiqueta-estado {
+    max-width: 100%;
+    padding-block: 0.125rem;
+    white-space: normal;
+  }
+  /* En 320 px la etiqueta de estado y "30 días o más" no entran juntas en el renglón 1 (se montaban 7 px): la de antigüedad baja al
+     final de la tarjeta, después del detalle, que ya dice cuántos días tiene. */
+  @container interior (max-width: 19rem) {
+    #tabla .c-concilia .etiqueta-antigua {
+      grid-column: 1 / -1;
+      grid-row: 7;
+      justify-self: start;
+      margin-top: 0.375rem;
+    }
+  }
+  /* Sin registro la etiqueta de lectura también puede pasar a dos renglones ("Revisar antes de cargar" con el texto al 200 %). */
+  #tabla .c-lectura .etiqueta-estado {
+    max-width: 100%;
+    padding-block: 0.125rem;
+    white-space: normal;
+  }
+  /* Renglones 2 y 3: comprobante a la izquierda, importe a la derecha. */
+  #tabla .c-comprobante .linea-1 {
+    grid-column: 1 / 3;
+    grid-row: 2;
+    margin-top: var(--e-3);
+  }
+  #tabla .c-comprobante .linea-2 {
+    grid-column: 1 / 3;
+    grid-row: 3;
+  }
+  #tabla .c-importe {
+    grid-column: 3;
+    grid-row: 2 / 4;
+    align-self: start;
+    margin-top: var(--e-3);
+    width: auto;
+    font-size: var(--t-h3);
+    line-height: 1.3;
+    text-align: right;
+  }
+  /* Renglón 4: CUIT y fecha a la izquierda, "Editar" a la derecha. */
+  #tabla .c-comprobante .meta-compacta {
+    display: block;
+    grid-column: 1 / 3;
+    grid-row: 4;
+    align-self: center;
+    margin-top: 0;
+  }
+  #tabla .c-acciones {
+    grid-column: 3;
+    grid-row: 4;
+    align-self: center;
+    justify-self: end; /* "Editar" pegado al borde derecho, bajo el importe */
+    width: auto;
+    margin-top: var(--e-1);
+  }
+  /* Renglones siguientes: lectura repetida y detalle. */
+  #tabla .lectura-compacta {
+    grid-column: 1 / -1;
+    grid-row: 5;
+    justify-self: start;
+  }
+  #tabla.sin-conciliar .lectura-compacta {
+    display: none;
+  }
+  #tabla .c-concilia .detalle {
+    grid-column: 1 / -1;
+    grid-row: 6;
+  }
+  #tabla .c-emisor,
+  #tabla .c-fecha {
+    display: none;
+  }
+  #tabla:not(.sin-conciliar) .c-lectura {
+    display: none;
+  }
+  .lectura-compacta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+    margin-top: 0.375rem;
+  }
+
+  /* Texto agrandado (zoom de texto al 200 %): el interior mide ~10 rem y el importe, que nunca se parte, ya no deja lugar al comprobante.
+     Todo pasa a una sola columna: el importe, la CUIT con la fecha y "Editar" van cada uno en su renglón, alineados a la izquierda. */
+  @container interior (max-width: 14rem) {
+    #tabla .c-importe {
+      grid-column: 1 / -1;
+      grid-row: 4;
+      margin-top: var(--e-1);
+      text-align: left;
+    }
+    #tabla .c-comprobante .meta-compacta {
+      grid-column: 1 / -1;
+      grid-row: 5;
+      margin-top: var(--e-1);
+    }
+    #tabla .c-acciones {
+      grid-column: 1 / -1;
+      grid-row: 6;
+      justify-self: start;
+    }
+    #tabla .lectura-compacta {
+      grid-row: 7;
+    }
+    #tabla .c-concilia .detalle {
+      grid-row: 8;
+    }
+    #tabla .c-concilia .etiqueta-antigua {
+      grid-row: 9;
+    }
+  }
+  /* Panel de edición: pegado a la fila, con el mismo fondo y la franja gruesa. */
+  #tabla tbody tr.fila-edicion {
+    display: block;
+    padding: var(--e-3);
+    background: var(--c-edicion);
+    box-shadow: inset 6px 0 0 var(--c-acento);
+  }
+  #tabla tbody tr.fila-edicion > td {
+    padding: 0;
+  }
+  .campos-edicion {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .edicion-acciones .boton {
+    flex: 1 1 8rem;
+  }
+
+  #tabla tr.fila-nueva {
+    animation: destello 1200ms var(--m-curva) 1;
+  }
+  #tabla tr.fila-nueva > td {
+    animation: none;
+  }
+}
+
+/* ---------- Herramientas y cierre en ventanas angostas ---------- */
+@container ventana (max-width: 39.99rem) {
+  .barra-planilla {
+    flex-direction: column;
+    align-items: stretch;
+    padding: var(--e-3);
+  }
+  /* Filtros 2 × 2, sin desplazamiento: bordes compartidos (el hueco de 1 px deja ver el color del borde). */
+  .filtros {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: stretch;
+    gap: 1px;
+    background: var(--c-borde-fuerte);
+    border: 1px solid var(--c-borde-fuerte);
+    border-radius: var(--r-2);
+    overflow: hidden;
+  }
+  .filtro-opcion + .filtro-opcion {
+    margin-left: 0;
+  }
+  .filtro-opcion label,
+  .filtro-opcion:first-of-type label,
+  .filtro-opcion:last-of-type label {
+    justify-content: center;
+    height: 100%; /* llena la celda aunque la vecina tenga más renglones */
+    min-height: 2.75rem;
+    padding-block: 0.25rem;
+    border: 0;
+    border-radius: 0;
+    /* Con el texto agrandado la etiqueta pasa a dos renglones en lugar de ensanchar la grilla. */
+    flex-wrap: wrap;
+    text-align: center;
+    white-space: normal;
+  }
+  /* El anillo de foco queda adentro: el contenedor recorta lo que sobresale. */
+  .filtro-opcion input:focus-visible + label {
+    outline-offset: -3px;
+  }
+  .boton-exportar {
+    width: 100%;
+  }
+  .cierre {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .boton-vaciar {
+    width: 100%;
+  }
+}
+
+/* La leyenda "Mostrar en la planilla" solo se ve si hay lugar. */
+@container ventana (max-width: 61.99rem) {
+  .filtros legend {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+}
+
+/* ---------- Confirmación en dos pasos (data-confirmando lo pone el programador al primer clic) ---------- */
+.boton[data-confirmando],
+.boton-texto[data-confirmando] {
+  overflow: hidden;
+  background: var(--c-diferencia-r);
+  border-color: var(--c-diferencia-r);
+  color: var(--c-peligro-texto);
+}
+.boton[data-confirmando]::before,
+.boton-texto[data-confirmando]::before {
+  content: "";
+  position: absolute;
+  inset: auto 0 0 0;
+  height: 2px;
+  background: currentColor;
+  transform-origin: left center;
+  animation: vaciar 4s linear forwards;
+}
+@keyframes vaciar {
+  to {
+    transform: scaleX(0);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .boton[data-confirmando]::before,
+  .boton-texto[data-confirmando]::before {
+    display: none;
+  }
+}
+@media (hover: hover) {
+  .boton[data-confirmando]:hover,
+  .boton-texto[data-confirmando]:hover {
+    background: var(--c-diferencia-t);
+    color: var(--c-superficie);
+  }
+}

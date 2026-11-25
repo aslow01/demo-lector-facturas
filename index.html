@@ -1,0 +1,646 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+    <meta
+      name="description"
+      content="Lee facturas electrónicas argentinas desde el código QR de ARCA, las cruza con lo ya cargado en su sistema y muestra qué falta cargar, qué está mal cargado y qué está duplicado. Todo en el navegador, con datos ficticios."
+    />
+    <title>Lector y conciliador de facturas</title>
+    <link
+      rel="icon"
+      type="image/svg+xml"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%230B6B70' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='3' width='18' height='18' rx='3'/%3E%3Crect x='8' y='8' width='8' height='8' rx='1'/%3E%3C/svg%3E"
+    />
+  </head>
+  <body>
+    <!-- Sprite de íconos (dibujados a mano, 24 × 24, trazo 1.75, currentColor). Se usan con <svg class="icono"><use href="#i-…" /></svg>. -->
+    <svg class="sprite" aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg">
+      <symbol id="i-marca" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="3" /><rect x="8" y="8" width="8" height="8" rx="1" /></symbol>
+      <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5" /></symbol>
+      <symbol id="i-punto" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5" fill="currentColor" stroke="none" /></symbol>
+      <symbol id="i-alerta" viewBox="0 0 24 24"><path d="M12 4L21.5 20h-19z" /><path d="M12 10v4" /><path d="M12 17.2h.01" /></symbol>
+      <symbol id="i-distinto" viewBox="0 0 24 24"><path d="M5 9h14" /><path d="M5 15h14" /><path d="M15 5l-6 14" /></symbol>
+      <symbol id="i-guion" viewBox="0 0 24 24"><path d="M6 12h12" /></symbol>
+      <symbol id="i-copias" viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2" /><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2" /></symbol>
+      <symbol id="i-sistema" viewBox="0 0 24 24"><ellipse cx="12" cy="6" rx="7" ry="3" /><path d="M5 6v6c0 1.7 3.1 3 7 3s7-1.3 7-3V6" /><path d="M5 12v6c0 1.7 3.1 3 7 3s7-1.3 7-3v-6" /></symbol>
+      <symbol id="i-lapiz" viewBox="0 0 24 24"><path d="M4 20l1-4L16 5l3 3L8 19z" /><path d="M14 7l3 3" /></symbol>
+      <symbol id="i-sin-qr" viewBox="0 0 24 24"><rect x="4" y="4" width="6" height="6" /><rect x="14" y="4" width="6" height="6" /><rect x="4" y="14" width="6" height="6" /><path d="M14 14h2" /><path d="M3 3l18 18" /></symbol>
+      <symbol id="i-subir" viewBox="0 0 24 24"><path d="M12 16V4" /><path d="M7 9l5-5 5 5" /><path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3" /></symbol>
+      <symbol id="i-csv" viewBox="0 0 24 24"><path d="M6 3h8l4 4v14H6z" /><path d="M14 3v4h4" /><path d="M9 13h6" /><path d="M9 17h6" /></symbol>
+      <symbol id="i-candado" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="9" rx="2" /><path d="M8 11V8a4 4 0 0 1 8 0v3" /></symbol>
+      <symbol id="i-ayuda" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" /><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.7.4-1 1-1 1.7" /><path d="M12 17h.01" /></symbol>
+      <symbol id="i-cerrar" viewBox="0 0 24 24"><path d="M6 6l12 12" /><path d="M18 6L6 18" /></symbol>
+      <symbol id="i-chevron" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6" /></symbol>
+      <symbol id="i-flecha-der" viewBox="0 0 24 24"><path d="M5 12h14" /><path d="M13 6l6 6-6 6" /></symbol>
+      <symbol id="i-flecha-izq" viewBox="0 0 24 24"><path d="M19 12H5" /><path d="M11 6l-6 6 6 6" /></symbol>
+      <symbol id="i-ubicacion" viewBox="0 0 24 24"><path d="M12 21s7-6.2 7-11a7 7 0 1 0-14 0c0 4.8 7 11 7 11z" /><circle cx="12" cy="10" r="2.5" /></symbol>
+      <symbol id="i-reloj" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></symbol>
+      <symbol id="i-planilla" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2" /><path d="M3 9.5h18" /><path d="M9 9.5V20" /><path d="M15 9.5V20" /></symbol>
+    </svg>
+
+    <a class="saltar" href="#resultado">Ir al resultado</a>
+
+    <div class="pagina" id="pagina">
+      <header class="barra">
+        <div class="barra-interior">
+          <p class="marca">
+            <svg class="icono icono-marca" aria-hidden="true" focusable="false"><use href="#i-marca" /></svg>
+            <span>Lector de facturas</span>
+          </p>
+          <p class="etiqueta-demo etiqueta-demo-barra">Demo con datos ficticios</p>
+          <div class="guia-ancla">
+            <button type="button" class="guia-abrir" id="guia-abrir" aria-expanded="false" aria-controls="guia">
+              <svg class="icono" aria-hidden="true" focusable="false"><use href="#i-ayuda" /></svg>
+              <span>¿Cómo funciona?</span>
+            </button>
+          </div>
+          <nav aria-label="Portafolio">
+            <a class="volver" href="https://matiasormeno.com.ar/" rel="noopener">
+              <svg class="icono" aria-hidden="true" focusable="false"><use href="#i-flecha-izq" /></svg>
+              <span class="volver-texto"><span class="volver-extra">Volver al </span><span class="volver-palabra">portafolio</span></span>
+            </a>
+          </nav>
+        </div>
+        <!-- Aviso de primera visita: en el flujo, debajo de la barra (no flota ni tapa el título). -->
+        <div class="barra-globo">
+          <div class="guia-globo" id="guia-globo" hidden>
+            <p>¿Primera vez? Vea en 4 pasos cómo se usa.</p>
+            <button type="button" class="boton-enlace" id="guia-globo-abrir">Ver la guía</button>
+            <button type="button" class="guia-globo-cerrar" id="guia-globo-cerrar" aria-label="Cerrar el aviso">
+              <svg class="icono" aria-hidden="true" focusable="false"><use href="#i-cerrar" /></svg>
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <main id="contenido">
+        <div class="encabezado">
+          <div class="encabezado-texto">
+            <p class="etiqueta-demo etiqueta-demo-encabezado">Demo con datos ficticios</p>
+            <h1>Lector y conciliador de facturas</h1>
+            <p class="bajada">
+              Lee el código QR de las facturas electrónicas, las cruza con lo ya cargado en su sistema y muestra en
+              segundos qué falta cargar, qué está mal cargado y qué está duplicado.
+            </p>
+            <p class="bajada-nota">
+              Demo propia, escrita desde cero con datos ficticios, sobre el mismo tipo de problema que resolví en el trabajo: conciliar lo cargado contra los comprobantes.
+              <a href="https://matiasormeno.com.ar/casos/automatizacion-facturas/" rel="noopener">Ver el caso de estudio<svg class="icono" aria-hidden="true" focusable="false"><use href="#i-flecha-der" /></svg></a>
+            </p>
+            <p class="arranque">
+              <button type="button" class="boton boton-grande" id="ejemplo-completo">Ver un ejemplo completo</button>
+              <span class="nota">Muestra el resultado de la conciliación.</span>
+            </p>
+            <p class="privacidad" role="note">
+              <svg class="icono" aria-hidden="true" focusable="false"><use href="#i-candado" /></svg>
+              <span>Sus archivos no salen de este navegador: no se envían a ningún servidor.</span>
+            </p>
+          </div>
+
+          <section class="que-hace" aria-labelledby="titulo-que-hace">
+            <h2 id="titulo-que-hace" class="rotulo">Qué hace</h2>
+            <ol class="proceso">
+              <li>
+                <span class="proceso-titulo">Lee el QR</span>
+                <span class="proceso-texto">de cada factura, en su navegador</span>
+              </li>
+              <li>
+                <span class="proceso-titulo">Cruza con su sistema</span>
+                <span class="proceso-texto">contra el CSV de lo ya cargado</span>
+              </li>
+              <li>
+                <span class="proceso-titulo">Muestra qué falta</span>
+                <span class="proceso-texto">y qué está mal cargado o duplicado</span>
+              </li>
+            </ol>
+          </section>
+        </div>
+
+        <!--
+          Escritorio con ventanas. Anatomía de cada ventana:
+          .ventana > .ventana-barra (título) · [.ventana-herramientas] · .ventana-interior · [.ventana-estado].
+          Las barras de estado no usan `hidden`: si están vacías miden 0 por CSS (las regiones role="status" deben existir siempre).
+          Plegar lo hace el programador: `hidden` en cada id de aria-controls y `data-plegada` en la .ventana.
+        -->
+        <div class="fuentes">
+          <section class="ventana" id="fuente-comprobantes" aria-labelledby="titulo-cargar">
+            <div class="ventana-barra">
+              <span class="ventana-icono ventana-paso" aria-hidden="true">1</span>
+              <h2 id="titulo-cargar" tabindex="-1">Facturas recibidas</h2>
+              <span class="ventana-meta num" id="meta-comprobantes"></span>
+              <div class="ventana-controles">
+                <button
+                  type="button"
+                  class="ventana-plegar"
+                  aria-expanded="true"
+                  aria-controls="interior-comprobantes"
+                  aria-label="Ver contenido de: Facturas recibidas"
+                >
+                  <svg class="icono" aria-hidden="true" focusable="false"><use href="#i-chevron" /></svg>
+                </button>
+              </div>
+            </div>
+
+            <div class="ventana-interior" id="interior-comprobantes">
+              <div class="zona" id="zona" data-estado="vacia">
+                <input id="archivos" class="zona-input" type="file" multiple accept="application/pdf,image/*" />
+                <label for="archivos" class="zona-etiqueta">
+                  <svg class="icono zona-icono zona-icono-subir" aria-hidden="true" focusable="false"><use href="#i-subir" /></svg>
+                  <svg class="icono zona-icono zona-icono-ok" aria-hidden="true" focusable="false"><use href="#i-check" /></svg>
+                  <span class="zona-texto">
+                    <span class="zona-titulo" id="estado-zona">Arrastre PDF o imágenes aquí o elíjalos</span>
+                    <span class="zona-ayuda">Con el QR de ARCA. Hasta 15 MB por archivo.</span>
+                  </span>
+                  <progress class="zona-progreso" id="progreso" max="100" value="0" aria-label="Avance de la lectura"></progress>
+                  <span class="zona-accion">Agregar más</span>
+                </label>
+              </div>
+
+              <details class="desplegable">
+                <summary>
+                  <svg class="icono icono-chevron" aria-hidden="true" focusable="false"><use href="#i-chevron" /></svg>
+                  Pegar direcciones del QR
+                </summary>
+                <form class="url" id="form-url" novalidate>
+                  <label for="url-qr">Una dirección por línea</label>
+                  <textarea id="url-qr" rows="3" spellcheck="false" autocomplete="off" placeholder="https://www.afip.gob.ar/fe/qr/?p=..."></textarea>
+                  <button type="submit" class="boton boton-secundario">Agregar direcciones</button>
+                </form>
+              </details>
+
+              <p class="fuente-ejemplo">
+                <button type="button" class="boton-enlace" id="ejemplos">Probar solo con facturas de ejemplo</button>
+                <span class="nota">Empresas y CUIT inventados.</span>
+              </p>
+              <p class="fuente-ejemplo" id="facturas-pdf">
+                <a class="boton-enlace" id="descargar-pdf" href="ejemplos/factura-ejemplo-a-1245.pdf" download>Descargar una factura de ejemplo (PDF ficticio)</a>
+                <span class="nota">
+                  Sirve para probar la lectura del QR sin una factura real. Hay dos más:
+                  <a href="ejemplos/factura-ejemplo-b-77.pdf" download>factura B</a> y
+                  <a href="ejemplos/factura-ejemplo-a-usd-1251.pdf" download>factura en dólares</a>.
+                </span>
+              </p>
+            </div>
+
+            <div class="ventana-estado"><p id="mensajes" class="mensajes" role="status" aria-live="polite"></p></div>
+          </section>
+
+          <section class="ventana" id="fuente-registro" aria-labelledby="titulo-concilia">
+            <div class="ventana-barra">
+              <span class="ventana-icono ventana-paso" aria-hidden="true">2</span>
+              <h2 id="titulo-concilia" tabindex="-1">Lo ya cargado en su sistema</h2>
+              <span class="ventana-meta num" id="meta-registro">Opcional</span>
+              <div class="ventana-controles">
+                <button
+                  type="button"
+                  class="ventana-plegar"
+                  aria-expanded="true"
+                  aria-controls="interior-registro"
+                  aria-label="Ver contenido de: Lo ya cargado en su sistema"
+                >
+                  <svg class="icono" aria-hidden="true" focusable="false"><use href="#i-chevron" /></svg>
+                </button>
+              </div>
+            </div>
+
+            <div class="ventana-interior" id="interior-registro">
+              <p class="fuente-explicacion">
+                Suba el CSV que exporta su sistema de gestión y la planilla indicará qué comprobantes hay por cargar, cuáles
+                ya están y cuáles están mal cargados.
+              </p>
+
+              <div class="zona-fila">
+                <div class="zona zona-registro" id="zona-registro" data-estado="vacia">
+                  <input id="archivo-registro" class="zona-input" type="file" accept=".csv,text/csv,text/plain" />
+                  <label for="archivo-registro" class="zona-etiqueta">
+                    <svg class="icono zona-icono zona-icono-subir" aria-hidden="true" focusable="false"><use href="#i-subir" /></svg>
+                    <svg class="icono zona-icono zona-icono-ok" aria-hidden="true" focusable="false"><use href="#i-check" /></svg>
+                    <span class="zona-texto">
+                      <span class="zona-titulo" id="estado-zona-registro">Arrastre el CSV aquí o elíjalo</span>
+                      <span class="zona-ayuda">Hasta 2 MB y 20.000 líneas.</span>
+                    </span>
+                    <span class="zona-accion">Cambiar</span>
+                  </label>
+                </div>
+                <button type="button" class="boton-texto" id="quitar-registro" hidden>Quitar registro</button>
+              </div>
+
+              <details class="desplegable" id="detalle-formato">
+                <summary>
+                  <svg class="icono icono-chevron" aria-hidden="true" focusable="false"><use href="#i-chevron" /></svg>
+                  ¿Qué formato debe tener el archivo?
+                </summary>
+                <div class="desplegable-cuerpo">
+                  <p>
+                    CSV o archivo de texto con separador punto y coma, coma o tabulador, con una primera línea de
+                    encabezados. Las columnas se reconocen por su nombre, sin importar mayúsculas, tildes ni orden:
+                  </p>
+                  <ul>
+                    <li><strong>CUIT:</strong> cuit, cuit emisor, cuit proveedor (con o sin guiones).</li>
+                    <li><strong>Tipo:</strong> tipo, tipo comprobante. Código de ARCA (1, 6…) o nombre (Factura A).</li>
+                    <li><strong>Punto de venta:</strong> punto de venta, pto vta, pv.</li>
+                    <li><strong>Número:</strong> numero, nro, numero comprobante.</li>
+                    <li><strong>Importe:</strong> importe, total. Acepta 1.234,56 y 1,234.56. En las notas de crédito se ignora el signo.</li>
+                  </ul>
+                  <p>
+                    <strong>Codificación:</strong> UTF-8 (con o sin marca de orden de bytes), UTF-16 con marca de orden de
+                    bytes y Windows-1252. El «Texto Unicode (*.txt)» que guarda Excel (UTF-16 con tabuladores) también sirve.
+                  </p>
+                  <p>
+                    El CSV que exporta esta misma página también se acepta. Un comprobante se identifica por CUIT emisor,
+                    tipo, punto de venta y número, y el importe debe coincidir al centavo.
+                  </p>
+                </div>
+              </details>
+
+              <p class="fuente-ejemplo">
+                <button type="button" class="boton-enlace" id="registro-ejemplo">Probar solo con un registro de ejemplo</button>
+              </p>
+            </div>
+
+            <div class="ventana-estado"><p id="mensajes-registro" class="mensajes" role="status" aria-live="polite"></p></div>
+          </section>
+        </div>
+
+        <section class="ventana" id="resultado" aria-labelledby="titulo-resultado">
+          <div class="ventana-barra">
+            <span class="ventana-icono ventana-paso" aria-hidden="true">3</span>
+            <h2 id="titulo-resultado" tabindex="-1">Resultado</h2>
+            <span class="ventana-meta num" id="meta-resultado"></span>
+            <div class="ventana-controles">
+              <button
+                type="button"
+                class="ventana-plegar"
+                aria-expanded="true"
+                aria-controls="interior-resultado"
+                aria-label="Ver contenido de: Resultado"
+              >
+                <svg class="icono" aria-hidden="true" focusable="false"><use href="#i-chevron" /></svg>
+              </button>
+            </div>
+          </div>
+
+          <div class="ventana-interior" id="interior-resultado">
+            <!-- Sin comprobantes: silueta del resultado y la invitación a ver el ejemplo. -->
+            <div class="vacio-resultado" id="vacio-resultado">
+              <div class="silueta" aria-hidden="true">
+                <div class="silueta-principal">
+                  <span class="rotulo">Falta cargar</span>
+                  <span class="silueta-cifra">—</span>
+                </div>
+                <div class="silueta-filas">
+                  <span class="silueta-fila"></span>
+                  <span class="silueta-fila"></span>
+                  <span class="silueta-fila"></span>
+                </div>
+              </div>
+              <div class="vacio-texto">
+                <p id="vacio">El resultado aparece aquí. Cargue sus facturas o vea el ejemplo completo.</p>
+                <button type="button" class="boton boton-secundario" id="ejemplo-completo-2">Ver un ejemplo completo</button>
+              </div>
+            </div>
+
+            <!-- Con comprobantes: protagonista y, a su lado, lo que requiere atención (o el siguiente paso). -->
+            <div class="resultado-resumen" id="resultado-resumen">
+              <div class="protagonista" id="concilia-principal"></div>
+
+              <section class="siguiente-paso" id="siguiente-paso" aria-labelledby="titulo-siguiente-paso">
+                <h3 id="titulo-siguiente-paso">Siguiente paso</h3>
+                <p>Suba lo ya cargado en su sistema para saber qué falta cargar.</p>
+                <button type="button" class="boton boton-secundario" id="registro-ejemplo-2">Usar el registro de ejemplo</button>
+              </section>
+
+              <section class="atencion" id="concilia-resumen" aria-labelledby="titulo-atencion" hidden>
+                <h3 id="titulo-atencion">Requieren atención</h3>
+                <div id="concilia-atencion"></div>
+              </section>
+            </div>
+          </div>
+
+          <div class="ventana-estado linea-menor"><span id="concilia-menor"></span><span id="lectura-resumen"></span></div>
+        </section>
+
+        <section class="ventana ventana-planilla" id="planilla" aria-labelledby="titulo-planilla">
+          <div class="ventana-cabeza">
+            <div class="ventana-barra">
+              <svg class="icono ventana-icono" aria-hidden="true" focusable="false"><use href="#i-planilla" /></svg>
+              <h2 id="titulo-planilla" tabindex="-1">Planilla de comprobantes</h2>
+              <span class="ventana-meta num" id="meta-planilla"></span>
+              <div class="ventana-controles">
+                <button
+                  type="button"
+                  class="ventana-plegar"
+                  aria-expanded="true"
+                  aria-controls="barra-planilla interior-planilla"
+                  aria-label="Ver contenido de: Planilla de comprobantes"
+                >
+                  <svg class="icono" aria-hidden="true" focusable="false"><use href="#i-chevron" /></svg>
+                </button>
+              </div>
+            </div>
+
+            <div class="ventana-herramientas barra-planilla" id="barra-planilla">
+              <fieldset class="filtros" id="filtros">
+                <legend>Mostrar en la planilla</legend>
+                <span class="filtro-opcion">
+                  <input type="radio" name="filtro" id="filtro-todas" value="todas" checked />
+                  <label for="filtro-todas">Todas <span class="conteo" id="conteo-todas"></span></label>
+                </span>
+                <span class="filtro-opcion">
+                  <input type="radio" name="filtro" id="filtro-faltan" value="faltan" />
+                  <label for="filtro-faltan">Falta cargar <span class="conteo" id="conteo-faltan"></span></label>
+                </span>
+                <span class="filtro-opcion">
+                  <input type="radio" name="filtro" id="filtro-revisar" value="revisar" />
+                  <label for="filtro-revisar">Revisar <span class="conteo" id="conteo-revisar"></span></label>
+                </span>
+                <span class="filtro-opcion">
+                  <input type="radio" name="filtro" id="filtro-diferencias" value="diferencias" />
+                  <label for="filtro-diferencias">Mal cargadas <span class="conteo" id="conteo-diferencias"></span></label>
+                </span>
+              </fieldset>
+              <button type="button" class="boton boton-secundario boton-exportar" id="exportar">
+                <svg class="icono" aria-hidden="true" focusable="false"><use href="#i-csv" /></svg>
+                Exportar CSV
+              </button>
+            </div>
+          </div>
+
+          <div class="ventana-interior" id="interior-planilla">
+            <!-- Ordenar y antigüedad (solo con registro). Es un <details>: abierto en pantallas anchas y plegado en celular (main.ts fija el
+                 estado inicial según el ancho y respeta lo que elija la persona). Los ids los conecta main.ts por delegación de eventos. -->
+            <details class="antiguedad" id="barra-antiguedad" open>
+              <summary class="antiguedad-resumen rotulo">
+                <svg class="icono" aria-hidden="true" focusable="false"><use href="#i-chevron" /></svg>
+                <span>Ordenar y antigüedad<span class="antiguedad-activo" id="antiguedad-activo"></span></span>
+              </summary>
+              <div class="antiguedad-cuerpo">
+                <div class="antiguedad-campos">
+                  <div class="campo-barra">
+                    <label for="orden-planilla">Orden</label>
+                    <select id="orden-planilla">
+                      <option value="numero">Orden de la planilla</option>
+                      <option value="antiguedad">Lo que falta cargar, de la más antigua a la más nueva</option>
+                    </select>
+                  </div>
+                  <div class="campo-barra">
+                    <label for="fecha-referencia">Fecha de referencia</label>
+                    <input type="date" id="fecha-referencia" aria-describedby="referencia-antiguedad nota-dias" />
+                  </div>
+                  <div class="campo-barra campo-barra-dias">
+                    <label for="umbral-antiguedad">Marcar desde (días)</label>
+                    <input type="number" id="umbral-antiguedad" min="1" max="3650" step="1" inputmode="numeric" aria-describedby="nota-dias" />
+                  </div>
+                </div>
+                <p class="nota" id="referencia-antiguedad"></p>
+                <p class="nota" id="nota-dias">Cuenta los días corridos desde la fecha de emisión hasta la fecha de referencia; no tiene en cuenta plazos fiscales.</p>
+              </div>
+            </details>
+
+            <div class="tabla-envoltorio" id="envoltorio" hidden>
+              <table id="tabla" class="sin-conciliar">
+                <caption class="solo-lectores">
+                  Comprobantes leídos. Con el botón Editar de cada fila se pueden corregir los datos a mano.
+                </caption>
+                <thead>
+                  <tr>
+                    <th scope="col" class="c-num">N.º</th>
+                    <th scope="col" class="c-concilia">Conciliación</th>
+                    <th scope="col" class="c-comprobante">Comprobante</th>
+                    <th scope="col" class="c-emisor">CUIT emisor</th>
+                    <th scope="col" class="c-fecha">Fecha</th>
+                    <th scope="col" class="c-importe">Importe</th>
+                    <th scope="col" class="c-lectura">Lectura</th>
+                    <th scope="col" class="c-acciones"><span class="solo-lectores">Acciones</span></th>
+                  </tr>
+                </thead>
+                <tbody id="cuerpo"></tbody>
+              </table>
+            </div>
+
+            <div class="ventana-seccion">
+              <p id="concilia-avisos" class="nota aviso-planilla"></p>
+
+              <p id="nota-ejemplo" class="nota nota-ejemplo" hidden>
+                Este ejemplo incluye a propósito casos difíciles: duplicado, mal cargado (otro importe u otro emisor), cargado dos
+                veces, CUIT inválido, fecha futura e imagen sin QR.
+              </p>
+
+              <div class="detalles-registro">
+                <section class="detalle-bloque" id="dos-veces" data-tono="revisar" aria-labelledby="titulo-dos-veces" hidden>
+                  <h3 id="titulo-dos-veces" tabindex="-1">Cargadas dos veces en el sistema</h3>
+                  <p class="nota">Es un error del sistema: no debería permitir cargar dos veces el mismo comprobante. Hay que dar de baja la copia que sobra.</p>
+                  <ul id="lista-dos-veces"></ul>
+                </section>
+                <section class="detalle-bloque" id="no-recibidas" data-tono="neutro" aria-labelledby="titulo-no-recibidas" hidden>
+                  <h3 id="titulo-no-recibidas" tabindex="-1">Cargadas en el sistema y no recibidas</h3>
+                  <p class="nota">Figuran en el registro, pero no hay ningún comprobante en la planilla con esa identificación.</p>
+                  <ul id="lista-no-recibidas"></ul>
+                </section>
+              </div>
+            </div>
+          </div>
+
+          <div class="ventana-estado cierre">
+            <div class="totales" id="totales" hidden>
+              <h3 class="solo-lectores">Totales por moneda</h3>
+              <ul id="lista-totales"></ul>
+              <p class="nota">Las notas de crédito restan y los duplicados no se suman. No se convierte entre monedas.</p>
+            </div>
+            <button type="button" class="boton boton-secundario boton-vaciar" id="vaciar">Vaciar planilla</button>
+          </div>
+        </section>
+      </main>
+
+      <footer class="pie">
+        <div class="pie-interior">
+          <p class="pie-texto">
+            Proyecto de demostración de Matías Ariel Ormeño: Matías definió el problema y las reglas, y prueba y aprueba
+            cada paso; el código lo escribe una IA (Claude) bajo esa dirección. No usa código, datos ni documentos de
+            terceros. No consulta a ARCA ni usa servicios externos.
+          </p>
+          <ul class="pie-enlaces">
+            <!-- "Código fuente": se oculta y recibe su dirección desde src/main.ts (URL_REPOSITORIO_PUBLICO y REPOSITORIO_PUBLICO, decisión D5). -->
+            <li hidden><a id="enlace-codigo" rel="noopener">Código fuente</a></li>
+            <li><a href="https://matiasormeno.com.ar/casos/automatizacion-facturas/" rel="noopener">Caso de estudio</a></li>
+            <li><a href="https://matiasormeno.com.ar/" rel="noopener">Volver al portafolio</a></li>
+          </ul>
+        </div>
+      </footer>
+    </div>
+
+    <!--
+      Guía "¿Cómo funciona?" (sin IA). La abre y cierra src/guia.ts (el programador). Contrato de este HTML:
+      - #guia-abrir: botón "¿Cómo funciona?" de la barra superior, junto a "Volver al portafolio" (se oculta mientras la guía está
+        abierta o en barra; la barra minimizada de abajo es la guía misma, ya no hay botón flotante).
+      - #guia-globo (hidden): aviso de primera visita, en el flujo bajo la barra superior (.barra-globo); se muestra quitando `hidden`.
+      - dialog#guia con data-modo="acoplado" | "hoja" | "barra" (lo pone el programador). Pasos: .guia-paso[data-paso] (se muestra uno,
+        los demás llevan `hidden`) y puntos button.guia-punto#guia-paso-N (aria-current="step" en el actual).
+      - #guia-mostrar: "Mostrar en la página" (uno solo, fuera de los pasos). En modo barra se usan #guia-barra-anterior,
+        #guia-barra-siguiente (solo se ven con data-modo="barra", por CSS) y #guia-minimizar, que hace de "restaurar" en modo barra (cambia su aria-label).
+    -->
+    <dialog class="guia" id="guia" aria-labelledby="guia-titulo">
+      <div class="ventana-barra">
+        <svg class="icono ventana-icono" aria-hidden="true" focusable="false"><use href="#i-ayuda" /></svg>
+        <h2 id="guia-titulo" tabindex="-1">¿Cómo funciona?</h2>
+        <span class="ventana-meta num" id="guia-meta">Paso 1 de 4</span>
+        <div class="ventana-controles">
+          <button type="button" class="guia-control guia-barra-nav" id="guia-barra-anterior" aria-label="Paso anterior">
+            <svg class="icono icono-izq" aria-hidden="true" focusable="false"><use href="#i-chevron" /></svg>
+          </button>
+          <button type="button" class="guia-control guia-barra-nav" id="guia-barra-siguiente" aria-label="Paso siguiente">
+            <svg class="icono" aria-hidden="true" focusable="false"><use href="#i-chevron" /></svg>
+          </button>
+          <button type="button" class="guia-control guia-minimizar" id="guia-minimizar" aria-label="Minimizar la guía">
+            <svg class="icono" aria-hidden="true" focusable="false"><use href="#i-chevron" /></svg>
+          </button>
+          <button type="button" class="guia-control" id="guia-cerrar" aria-label="Cerrar la guía">
+            <svg class="icono" aria-hidden="true" focusable="false"><use href="#i-cerrar" /></svg>
+          </button>
+        </div>
+      </div>
+
+      <div class="ventana-herramientas guia-pestanas" role="tablist" aria-label="Contenido de la guía">
+        <button type="button" role="tab" id="guia-tab-pasos" aria-selected="true" aria-controls="guia-panel-pasos">Pasos</button>
+        <button type="button" role="tab" id="guia-tab-preguntas" aria-selected="false" aria-controls="guia-panel-preguntas" tabindex="-1">Preguntas frecuentes</button>
+      </div>
+
+      <div class="ventana-interior guia-interior">
+        <div role="tabpanel" id="guia-panel-pasos" aria-labelledby="guia-tab-pasos">
+          <ol class="guia-puntos" aria-label="Pasos de la guía">
+            <li><button type="button" class="guia-punto" id="guia-paso-1" data-paso="1" aria-current="step" aria-label="Paso 1: Cargue las facturas"></button></li>
+            <li><button type="button" class="guia-punto" id="guia-paso-2" data-paso="2" aria-label="Paso 2: Sume lo ya cargado"></button></li>
+            <li><button type="button" class="guia-punto" id="guia-paso-3" data-paso="3" aria-label="Paso 3: Lea el resultado"></button></li>
+            <li><button type="button" class="guia-punto" id="guia-paso-4" data-paso="4" aria-label="Paso 4: Revise, corrija y exporte"></button></li>
+          </ol>
+
+          <section class="guia-paso" data-paso="1" aria-labelledby="guia-titulo-paso-1">
+            <h3 id="guia-titulo-paso-1">Cargue las facturas</h3>
+            <p>
+              Arrastre los PDF o las imágenes de las facturas electrónicas. La página lee el código QR de ARCA de cada
+              una, sin enviarlas a ningún lado. ¿No tiene una a mano? Descargue una factura de ejemplo en «Facturas
+              recibidas».
+            </p>
+          </section>
+          <section class="guia-paso" data-paso="2" aria-labelledby="guia-titulo-paso-2" hidden>
+            <h3 id="guia-titulo-paso-2">Sume lo ya cargado</h3>
+            <p>
+              Si su sistema de gestión exporta un CSV con lo cargado, súbalo. Así la página puede decir qué falta. Es
+              opcional.
+            </p>
+          </section>
+          <section class="guia-paso" data-paso="3" aria-labelledby="guia-titulo-paso-3" hidden>
+            <h3 id="guia-titulo-paso-3">Lea el resultado</h3>
+            <p>
+              Arriba, cuántos comprobantes hay por cargar y por cuánto. Al lado, lo que conviene mirar antes: datos
+              dudosos, mal cargados, duplicados.
+            </p>
+          </section>
+          <section class="guia-paso" data-paso="4" aria-labelledby="guia-titulo-paso-4" hidden>
+            <h3 id="guia-titulo-paso-4">Revise, corrija y exporte</h3>
+            <p>
+              Use los filtros para ver solo lo que falta o lo dudoso. «Editar» permite corregir una fila. Al terminar,
+              «Exportar CSV» arma la planilla para Excel.
+            </p>
+          </section>
+
+          <button type="button" class="boton boton-secundario" id="guia-mostrar">
+            <svg class="icono" aria-hidden="true" focusable="false"><use href="#i-ubicacion" /></svg>
+            Mostrar en la página
+          </button>
+        </div>
+
+        <div role="tabpanel" id="guia-panel-preguntas" aria-labelledby="guia-tab-preguntas" hidden>
+          <div class="guia-preguntas">
+            <details>
+              <summary>
+                <svg class="icono icono-chevron" aria-hidden="true" focusable="false"><use href="#i-chevron" /></svg>
+                ¿Mis archivos se envían a algún servidor?
+              </summary>
+              <p>No. Todo se procesa en este navegador; la página no tiene servidor ni conexiones externas.</p>
+            </details>
+            <details>
+              <summary>
+                <svg class="icono icono-chevron" aria-hidden="true" focusable="false"><use href="#i-chevron" /></svg>
+                ¿Qué es el QR de ARCA?
+              </summary>
+              <p>
+                El código que traen las facturas electrónicas argentinas. Contiene CUIT del emisor, tipo, punto de venta,
+                número, fecha, importe y CAE.
+              </p>
+            </details>
+            <details>
+              <summary>
+                <svg class="icono icono-chevron" aria-hidden="true" focusable="false"><use href="#i-chevron" /></svg>
+                ¿Qué formato debe tener el CSV de mi sistema?
+              </summary>
+              <p>
+                Un CSV con una primera línea de encabezados y columnas de CUIT, tipo, punto de venta, número e importe. Se
+                reconocen por nombre, sin importar mayúsculas, tildes ni orden.
+                <button type="button" class="boton-enlace" data-ir="detalle-formato">Ver el detalle</button>
+              </p>
+            </details>
+            <details>
+              <summary>
+                <svg class="icono icono-chevron" aria-hidden="true" focusable="false"><use href="#i-chevron" /></svg>
+                ¿Por qué una factura dice «Revisar antes de cargar»?
+              </summary>
+              <p>
+                Tiene datos dudosos (CUIT con dígito inválido, total cero o fecha futura) y no está en su sistema. No se
+                suma a lo que falta cargar hasta que se revise.
+              </p>
+            </details>
+            <details>
+              <summary>
+                <svg class="icono icono-chevron" aria-hidden="true" focusable="false"><use href="#i-chevron" /></svg>
+                ¿Qué significa «Mal cargada»?
+              </summary>
+              <p>
+                El comprobante figura en su sistema pero con otro importe («otro importe») o con otro CUIT («otro emisor»:
+                mismo tipo, número e importe). Un comprobante no se puede cargar dos veces: primero dé de baja la carga en el
+                sistema y después vuelva a cargarla con los datos correctos.
+              </p>
+            </details>
+            <details>
+              <summary>
+                <svg class="icono icono-chevron" aria-hidden="true" focusable="false"><use href="#i-chevron" /></svg>
+                ¿Qué significa «Cargada dos veces en el sistema»?
+              </summary>
+              <p>
+                El archivo de su sistema trae el mismo comprobante (mismo CUIT, tipo, punto de venta y número) más de una vez.
+                El sistema no debería permitirlo. La página compara el comprobante leído con todas las copias y dice cuál
+                sobra; si ninguna coincide, hay que dar de baja todas y cargarlo una sola vez con los datos correctos.
+              </p>
+            </details>
+            <details>
+              <summary>
+                <svg class="icono icono-chevron" aria-hidden="true" focusable="false"><use href="#i-chevron" /></svg>
+                ¿Usa inteligencia artificial?
+              </summary>
+              <p>
+                No. Lee el QR y aplica reglas fijas. El código lo escribió una IA bajo la dirección del autor (ver el
+                pie).
+              </p>
+            </details>
+            <details>
+              <summary>
+                <svg class="icono icono-chevron" aria-hidden="true" focusable="false"><use href="#i-chevron" /></svg>
+                ¿Los datos del ejemplo son reales?
+              </summary>
+              <p>No. Empresas, CUIT, importes y CAE son inventados.</p>
+            </details>
+          </div>
+        </div>
+      </div>
+
+      <div class="ventana-estado guia-pie">
+        <button type="button" class="boton boton-secundario" id="guia-anterior" disabled>Anterior</button>
+        <button type="button" class="boton" id="guia-siguiente">Siguiente</button>
+      </div>
+    </dialog>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

@@ -1,0 +1,452 @@
+/* Guía "¿Cómo funciona?" (sin IA): botón (la guía minimizada), globo de primera visita y panel en tres modos.
+   El comportamiento (abrir, cerrar, modos, pasos, resaltado) es de src/guia.ts.
+   Nunca parece un asistente: sin avatar, sin burbujas, sin "escribiendo…". Es una ventana más del escritorio. */
+
+/* ---------- Botón de apertura: está en la barra superior, junto a "Volver al portafolio" ----------
+   Ya no flota sobre la página (tapaba contenido a todos los anchos). La guía minimizada es la barra de abajo (modo "barra"). */
+.guia-ancla {
+  margin-left: auto;
+  min-width: 0;
+  max-width: 100%;
+}
+.guia-abrir {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--e-2);
+  min-height: 2.75rem;
+  padding: 0 var(--e-3);
+  border: 1px solid var(--c-borde-fuerte);
+  border-radius: var(--r-2);
+  background: var(--c-superficie);
+  color: var(--c-texto);
+  font-size: var(--t-tabla);
+  font-weight: 600;
+  line-height: 1.2;
+  /* Con el texto al 200 % en 320 px el rótulo pasa a dos renglones en lugar de ensanchar la página. */
+  max-width: 100%;
+  cursor: pointer;
+}
+.guia-abrir .icono {
+  width: 1.125rem;
+  height: 1.125rem;
+  color: var(--c-acento);
+}
+@media (hover: hover) {
+  .guia-abrir:hover {
+    background: var(--c-ventana-control-hover);
+  }
+}
+.guia-abrir:active {
+  transform: translateY(1px);
+}
+
+/* ---------- Aviso de primera visita: una nota en el flujo, bajo la barra superior (no flota: no tapa el título) ---------- */
+.guia-globo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  column-gap: var(--e-3);
+  margin-bottom: var(--e-3);
+  padding: 0 var(--e-1) 0 var(--e-4);
+  border: 1px solid var(--c-ventana-borde);
+  border-radius: var(--r-3);
+  background: var(--c-superficie);
+  font-size: var(--t-tabla);
+  line-height: 1.4;
+}
+.guia-globo p {
+  flex: 1 1 8rem;
+  padding-block: var(--e-2);
+}
+.guia-globo .boton-enlace {
+  flex: none;
+  min-height: 2.75rem;
+  font-weight: 600;
+}
+.guia-globo-cerrar {
+  position: relative;
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 2.75rem;
+  height: 2.75rem;
+  margin: 0 0 0 auto;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--c-texto-2);
+  cursor: pointer;
+}
+.guia-globo-cerrar::before {
+  content: "";
+  position: absolute;
+  inset: 0.375rem;
+  border-radius: var(--r-2);
+}
+.guia-globo-cerrar .icono {
+  position: relative;
+  width: 1.125rem;
+  height: 1.125rem;
+}
+.guia-globo-cerrar:focus-visible {
+  outline: none;
+}
+.guia-globo-cerrar:focus-visible::before {
+  outline: 2px solid var(--c-foco);
+  outline-offset: 1px;
+}
+@media (hover: hover) {
+  .guia-globo-cerrar:hover {
+    color: var(--c-texto);
+  }
+  .guia-globo-cerrar:hover::before {
+    background: var(--c-ventana-control-hover);
+  }
+}
+
+/* ---------- Panel: el <dialog> con anatomía de ventana ---------- */
+.guia {
+  flex-direction: column;
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--c-ventana-borde);
+  background: var(--c-superficie);
+  color: var(--c-texto);
+  font-size: var(--t-cuerpo);
+}
+/* display solo con la guía abierta: si no, se pisaría el display:none del <dialog> cerrado. */
+.guia[open] {
+  display: flex;
+}
+.guia::backdrop {
+  background: rgb(0 0 0 / 0.4);
+}
+
+.guia .ventana-barra {
+  flex: none;
+  flex-wrap: nowrap;
+  column-gap: var(--e-1);
+}
+/* El paso y el título se recortan con "…" antes de empujar los controles a otro renglón. */
+.guia .ventana-barra h2,
+.guia .ventana-meta {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.guia .ventana-barra h2 {
+  flex: 0 0 auto;
+}
+.guia .ventana-meta {
+  flex: 0 1 auto;
+  min-width: 0;
+  margin-left: 0;
+  padding-left: var(--e-2);
+}
+.guia .ventana-controles {
+  flex: none;
+}
+/* 320 px (accesibilidad M4): "¿Cómo funciona?" y "Paso 1 de 4" tienen que entrar enteros junto a los dos controles. El ícono de la barra
+   es decorativo (aria-hidden): en un teléfono muy angosto cede su lugar al texto. */
+@media (max-width: 23rem) {
+  .guia[data-modo="hoja"] .ventana-barra > .ventana-icono {
+    display: none;
+  }
+}
+.guia:focus-within .ventana-barra {
+  box-shadow: inset 0 2px 0 var(--c-acento);
+}
+
+/* Pestañas: subrayado de 2 px en la activa (no el control segmentado de los filtros, para no confundirlos). */
+.guia-pestanas {
+  flex: none;
+  justify-content: flex-start;
+  gap: var(--e-1);
+  min-height: 2.75rem;
+  padding: 0 var(--e-3);
+}
+.guia-pestanas [role="tab"] {
+  position: relative;
+  min-height: 2.75rem;
+  margin-bottom: -1px;
+  padding: 0 var(--e-3);
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: none;
+  color: var(--c-texto-2);
+  font-weight: 500;
+  cursor: pointer;
+}
+.guia-pestanas [role="tab"][aria-selected="true"] {
+  border-bottom-color: var(--c-acento);
+  color: var(--c-texto);
+  font-weight: 600;
+}
+@media (hover: hover) {
+  .guia-pestanas [role="tab"]:hover {
+    color: var(--c-texto);
+  }
+}
+
+/* Interior desplazable. */
+.guia-interior {
+  display: block;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: var(--e-4);
+}
+.guia-interior [role="tabpanel"] {
+  display: flex;
+  flex-direction: column;
+  gap: var(--e-3);
+}
+.guia-interior [role="tabpanel"][hidden] {
+  display: none;
+}
+
+/* Puntos de pasos: botones de 44 px con un círculo de 12 px; el actual, relleno de acento. */
+.guia-puntos {
+  display: flex;
+  margin-left: calc(-1 * var(--e-4));
+}
+.guia-punto {
+  position: relative;
+  width: 2.75rem;
+  height: 2.75rem;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+.guia-punto::before {
+  content: "";
+  position: absolute;
+  inset: 50% auto auto 50%;
+  width: 0.75rem;
+  height: 0.75rem;
+  border: 1.5px solid var(--c-acento);
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+}
+.guia-punto[aria-current="step"]::before {
+  background: var(--c-acento);
+}
+.guia-punto:focus-visible {
+  outline: none;
+}
+.guia-punto:focus-visible::before {
+  outline: 2px solid var(--c-foco);
+  outline-offset: 3px;
+}
+
+.guia-paso {
+  display: flex;
+  flex-direction: column;
+  gap: var(--e-2);
+}
+.guia-paso h3 {
+  font-size: var(--t-h3);
+  font-weight: 600;
+  line-height: 1.3;
+}
+.guia-paso p {
+  max-width: 62ch;
+  color: var(--c-texto-2);
+}
+#guia-mostrar {
+  align-self: flex-start;
+}
+
+/* Preguntas frecuentes: un <details> por pregunta, separados por un divisor. */
+.guia-preguntas details {
+  border-top: 1px solid var(--c-borde);
+}
+.guia-preguntas details:first-child {
+  border-top: 0;
+}
+.guia-preguntas summary {
+  display: flex;
+  align-items: center;
+  gap: var(--e-2);
+  min-height: 2.75rem;
+  padding-block: var(--e-1);
+  font-weight: 600;
+  line-height: 1.3;
+  cursor: pointer;
+  list-style: none;
+}
+.guia-preguntas summary::-webkit-details-marker {
+  display: none;
+}
+.guia-preguntas details[open] > summary .icono-chevron {
+  transform: rotate(90deg);
+}
+.guia-preguntas details > p {
+  padding: 0 0 var(--e-3) calc(1rem + var(--e-2));
+  font-size: var(--t-chico);
+  color: var(--c-texto-2);
+}
+@media (hover: hover) {
+  .guia-preguntas summary:hover {
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+}
+
+/* Pie: Anterior y Siguiente. En la pestaña Preguntas no se muestra. */
+.guia-pie {
+  flex: none;
+  justify-content: space-between;
+  gap: var(--e-3);
+  padding: var(--e-2) var(--e-4);
+}
+.guia:has(#guia-tab-preguntas[aria-selected="true"]) .guia-pie {
+  display: none;
+}
+
+/* Controles propios de la guía: minimizar apunta abajo (la hoja baja a la barra); en la barra, restaurar apunta arriba. */
+.guia-minimizar .icono {
+  transform: rotate(90deg);
+}
+/* Anterior y Siguiente de la barra: solo se ven en modo barra. */
+.guia-barra-nav {
+  display: none;
+}
+.guia-barra-nav .icono-izq {
+  transform: rotate(180deg);
+}
+
+/* ---------- Modo "hoja" (< 1100 px, modal): desde abajo, ancho completo ---------- */
+.guia[data-modo="hoja"] {
+  position: fixed;
+  inset: auto 0 0 0;
+  max-height: 75dvh;
+  border-width: 1px 0 0;
+  border-radius: var(--r-4) var(--r-4) 0 0;
+  box-shadow: var(--s-flotante);
+  padding-bottom: env(safe-area-inset-bottom);
+  overflow: hidden;
+}
+.guia[data-modo="hoja"] .ventana-barra {
+  border-radius: calc(var(--r-4) - 1px) calc(var(--r-4) - 1px) 0 0;
+}
+.guia[data-modo="hoja"] .guia-pie {
+  border-radius: 0;
+}
+
+/* ---------- Modo "barra" (< 1100 px, minimizada, no modal): solo la barra de título, fija abajo ---------- */
+.guia[data-modo="barra"] {
+  position: fixed;
+  inset: auto 0 0 0;
+  z-index: 40;
+  border-width: 1px 0 0;
+  border-radius: 0;
+  box-shadow: var(--s-flotante);
+  padding-bottom: env(safe-area-inset-bottom);
+  background: var(--c-ventana-barra);
+}
+.guia[data-modo="barra"] .guia-pestanas,
+.guia[data-modo="barra"] .guia-interior,
+.guia[data-modo="barra"] .guia-pie {
+  display: none;
+}
+.guia[data-modo="barra"] .ventana-barra {
+  flex-wrap: nowrap;
+  border-bottom: 0;
+  border-radius: 0;
+  padding-block: 0;
+}
+.guia[data-modo="barra"] .guia-barra-nav {
+  display: grid;
+}
+/* En la barra el título cede su lugar al paso ("Paso 2 de 4 · título"): el h2 sigue ahí para el nombre accesible. */
+.guia[data-modo="barra"] .ventana-barra h2 {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+.guia[data-modo="barra"] .ventana-meta {
+  flex: 1 1 0;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border-left: 0;
+  color: var(--c-texto);
+  font-weight: 600;
+}
+.guia[data-modo="barra"] .guia-minimizar .icono {
+  transform: rotate(-90deg);
+}
+html:has(.guia[data-modo="barra"][open]) {
+  scroll-padding-bottom: 5rem;
+}
+/* La barra fija de abajo no tapa el pie de la página. */
+body:has(.guia[data-modo="barra"][open]) {
+  padding-bottom: 3.5rem;
+}
+
+/* ---------- Modo "acoplado" (≥ 1100 px, no modal): una ventana más del escritorio, fija a la derecha ----------
+   Es `fixed` y no `sticky`/grilla: abrirla nunca desplaza la página, y su título y "Cerrar" quedan siempre a la vista.
+   El body le deja el lugar a su derecha para que no tape la página. */
+body.guia-acoplada {
+  padding-right: calc(22.5rem + 2 * var(--e-4));
+}
+.guia[data-modo="acoplado"] {
+  position: fixed;
+  inset: var(--e-4) var(--e-4) var(--e-4) auto;
+  z-index: 40;
+  width: 22.5rem;
+  height: auto;
+  max-height: none;
+  border-radius: var(--r-3);
+  box-shadow: var(--s-ventana);
+  overflow: hidden;
+}
+.guia[data-modo="acoplado"] .ventana-barra {
+  border-radius: calc(var(--r-3) - 1px) calc(var(--r-3) - 1px) 0 0;
+}
+.guia[data-modo="acoplado"] .guia-pie {
+  border-radius: 0 0 calc(var(--r-3) - 1px) calc(var(--r-3) - 1px);
+}
+/* En escritorio no hay "minimizar": la guía acoplada no tapa nada. */
+.guia[data-modo="acoplado"] .guia-minimizar {
+  display: none;
+}
+
+/* ---------- Aparición (solo con movimiento permitido) ---------- */
+@media (prefers-reduced-motion: no-preference) {
+  .guia[data-modo="acoplado"][open] {
+    animation: guia-entra-lado var(--m-medio) var(--m-curva);
+  }
+  .guia[data-modo="hoja"][open] {
+    animation: guia-entra-abajo var(--m-lento) var(--m-curva);
+  }
+  .guia-globo:not([hidden]) {
+    animation: guia-entra-arriba var(--m-medio) var(--m-curva);
+  }
+}
+@keyframes guia-entra-lado {
+  from {
+    opacity: 0;
+    transform: translateX(8px);
+  }
+}
+@keyframes guia-entra-abajo {
+  from {
+    transform: translateY(100%);
+  }
+}
+@keyframes guia-entra-arriba {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}

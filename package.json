@@ -1,0 +1,27 @@
+{
+  "name": "demo-lector-facturas",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Lee facturas electrónicas argentinas desde el código QR de ARCA, en el navegador, y arma una planilla de cuentas a pagar.",
+  "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "ejemplos": "node scripts/generar-ejemplos.ts",
+    "ejemplos-pdf": "node scripts/generar-pdfs.ts"
+  },
+  "dependencies": {
+    "jsqr": "1.4.0",
+    "pdfjs-dist": "6.5.438"
+  },
+  "devDependencies": {
+    "typescript": "7.0.2",
+    "vite": "8.3.5",
+    "vitest": "5.1.0"
+  }
+}

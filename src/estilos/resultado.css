@@ -1,0 +1,328 @@
+/* Resultado (paso 3): ventana con la cifra protagonista, "Requieren atención", estado vacío y, en la barra de estado, la línea menor.
+   El marco y la barra de título son de ventanas.css. El resumen reacciona al ancho del interior (contenedor "interior"),
+   no al de la pantalla: con la guía acoplada o a 840 px cambia solo. */
+
+/* Sin comprobantes: solo el estado vacío. Con comprobantes: el resumen. */
+body:not([data-hay-datos]) .resultado-resumen {
+  display: none;
+}
+body[data-hay-datos] .vacio-resultado {
+  display: none;
+}
+
+/* ---------- Resumen: protagonista + atención (o siguiente paso), dos columnas del interior separadas por un divisor ---------- */
+.resultado-resumen {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  row-gap: var(--e-4);
+}
+.resultado-resumen > :not(.protagonista) {
+  padding-top: var(--e-4);
+  border-top: 1px solid var(--c-borde);
+}
+.protagonista:empty + :not(.protagonista) {
+  padding-top: 0;
+  border-top: 0;
+}
+@container interior (min-width: 44rem) {
+  .resultado-resumen {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    column-gap: var(--e-5);
+  }
+  .resultado-resumen > :not(.protagonista) {
+    padding: 0 0 0 var(--e-5);
+    border-top: 0;
+    border-left: 1px solid var(--c-borde);
+  }
+}
+@container interior (min-width: 66rem) {
+  .resultado-resumen {
+    grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+  }
+}
+
+/* Sin registro se ve el "siguiente paso"; con registro, la atención. */
+body[data-conciliado] #siguiente-paso {
+  display: none;
+}
+body:not([data-conciliado]) #concilia-resumen {
+  display: none;
+}
+
+/* ---------- Protagonista ---------- */
+.protagonista {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: flex-start;
+  gap: var(--e-2);
+  min-width: 0;
+  padding: var(--e-2) var(--e-4);
+  border-left: 6px solid var(--tono-r, var(--c-neutro-r));
+}
+@media (min-width: 40rem) {
+  .protagonista {
+    padding-block: var(--e-3);
+    padding-inline: var(--e-5);
+  }
+}
+.protagonista:empty {
+  display: none;
+}
+.rotulo-resultado {
+  color: var(--c-texto-2);
+  font-size: var(--t-rotulo);
+  font-weight: 600;
+  line-height: 1.3;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.cifra-linea {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.25rem var(--e-2);
+}
+.cifra {
+  font-size: var(--t-cifra);
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums lining-nums;
+}
+.cifra-unidad {
+  font-size: var(--t-h2);
+  font-weight: 600;
+  line-height: 1.25;
+}
+.icono-grande {
+  align-self: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  color: var(--c-ok-r);
+}
+.montos {
+  font-size: var(--t-h3);
+  font-weight: 600;
+  line-height: 1.3;
+  font-variant-numeric: tabular-nums lining-nums;
+}
+.mensaje-resultado {
+  color: var(--c-texto-2);
+}
+/* Renglón aparte de las notas de crédito que faltan ("Y 1 nota de crédito por $ 300,00"): secundario a la cifra y a los montos, pero con
+   la cantidad y el rótulo en el color principal y las cifras alineadas. Nunca va solo en color: el texto dice qué es. */
+.cifra-ademas {
+  font-variant-numeric: tabular-nums lining-nums;
+  overflow-wrap: anywhere;
+}
+/* Los importes no se parten entre el símbolo y la cifra: el renglón corta entre ellos, no adentro. */
+.cifra-ademas .monto,
+.montos .monto {
+  white-space: nowrap;
+}
+.cifra-ademas strong {
+  color: var(--c-texto);
+  font-weight: 600;
+}
+.protagonista > .boton {
+  margin-top: var(--e-2);
+}
+/* Sin lecturas: hay registro pero no se pudo comparar nada. No es un "cero" verde: la cifra se apaga y el mensaje es lo importante. */
+.protagonista[data-variante="sin-lecturas"] .cifra {
+  color: var(--c-texto-2);
+}
+.protagonista[data-variante="sin-lecturas"] .mensaje-resultado {
+  max-width: 44ch;
+  color: var(--c-texto);
+}
+/* Mientras se leen archivos la cifra se atenúa (aria-busy lo pone el programador). */
+.protagonista[aria-busy="true"] .cifra {
+  opacity: 0.5;
+}
+@media (max-width: 39.99rem) {
+  .protagonista > .boton {
+    width: 100%;
+  }
+}
+
+/* ---------- Siguiente paso (con facturas, sin registro) ---------- */
+.siguiente-paso {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: var(--e-3);
+  min-width: 0;
+}
+.siguiente-paso h3,
+.atencion h3 {
+  font-size: var(--t-h3);
+  font-weight: 600;
+  line-height: 1.3;
+}
+.siguiente-paso p {
+  max-width: 40ch;
+  color: var(--c-texto-2);
+}
+
+/* ---------- Requieren atención ---------- */
+.atencion {
+  display: flex;
+  flex-direction: column;
+  gap: var(--e-2);
+  min-width: 0;
+}
+/* Siempre una lista de una columna. */
+.atencion ul {
+  display: flex;
+  flex-direction: column;
+}
+.atencion li,
+.atencion-item {
+  display: flex;
+  align-items: center;
+  gap: var(--e-3);
+  min-height: 2.75rem;
+  padding: var(--e-1) var(--e-2);
+  border-top: 1px solid var(--c-borde);
+  font-size: var(--t-tabla);
+  line-height: 1.3;
+}
+.atencion li:first-child {
+  border-top: 0;
+}
+@media (hover: hover) {
+  .atencion li:hover {
+    background: var(--c-superficie-2);
+  }
+}
+.atencion li > .icono,
+.atencion-item > .icono {
+  color: var(--tono-t, var(--c-texto-2));
+}
+.atencion-nada .icono {
+  color: var(--c-ok-r);
+}
+.atencion-cifra {
+  min-width: 1.5ch;
+  font-size: var(--t-h3);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums lining-nums;
+}
+.atencion-texto {
+  flex: 1;
+  min-width: 0;
+}
+.atencion .atencion-accion {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  min-width: 2.75rem; /* "Ver" solo mide 41 px de ancho: se lleva el objetivo a 44 */
+  min-height: 2.75rem;
+  justify-content: flex-end;
+  margin-left: auto;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--c-acento);
+  font-weight: 600;
+  white-space: nowrap;
+  text-decoration: none;
+  cursor: pointer;
+}
+.atencion-accion .icono {
+  width: 1rem;
+  height: 1rem;
+}
+@media (hover: hover) {
+  .atencion-accion:hover {
+    text-decoration: underline;
+  }
+}
+/* En interiores angostos el botón dice solo "Ver" (el nombre accesible completo va en aria-label). */
+@container interior (max-width: 39.99rem) {
+  .atencion-extra,
+  .accion-extra {
+    display: none;
+  }
+}
+.atencion-nada {
+  display: flex;
+  align-items: center;
+  gap: var(--e-2);
+  color: var(--c-texto-2);
+}
+
+/* ---------- Línea menor: vive en la barra de estado del Resultado ---------- */
+.linea-menor {
+  color: var(--c-texto-2);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- Estado vacío ---------- */
+.vacio-resultado {
+  display: grid;
+  gap: var(--e-5);
+}
+@container interior (min-width: 44rem) {
+  .vacio-resultado {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    align-items: center;
+    gap: var(--e-6);
+  }
+}
+
+.silueta {
+  display: flex;
+  flex-direction: column;
+  gap: var(--e-4);
+  color: var(--c-texto-3);
+}
+.silueta-principal {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--e-2);
+  padding: var(--e-3) var(--e-4);
+  border-left: 6px solid var(--c-borde);
+}
+.silueta-cifra {
+  font-size: var(--t-cifra);
+  font-weight: 700;
+  line-height: 1;
+}
+.silueta-filas {
+  display: flex;
+  flex-direction: column;
+  gap: var(--e-3);
+}
+.silueta-fila {
+  display: block;
+  height: 8px;
+  border-radius: var(--r-1);
+  background: var(--c-superficie-2);
+}
+.silueta-fila:nth-child(2) {
+  width: 86%;
+}
+.silueta-fila:nth-child(3) {
+  width: 68%;
+}
+
+.vacio-texto {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--e-3);
+  color: var(--c-texto-2);
+}
+.vacio-texto p {
+  max-width: 40ch;
+}
+@media (max-width: 39.99rem) {
+  .vacio-texto .boton {
+    width: 100%;
+  }
+}
+
