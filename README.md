@@ -1,5 +1,14 @@
 # Lector y conciliador de facturas
 
+## In English
+
+An invoice reader and reconciler: it reads Argentine electronic invoices (PDF or image with the ARCA QR code) and matches them against a CSV exported from a management system, showing which invoices still need to be entered, which were entered wrongly and which were entered twice. It runs entirely in the browser and all data is fictional.
+Stack: TypeScript and Vite, with only `pdfjs-dist` and `jsqr` in production; the matching is a deterministic rule, with no AI in the browser.
+Live demo: <https://facturas.matiasormeno.com.ar>
+Run it locally (Node 24, npm 11): `npm install`, `npm run dev`, `npm test`.
+Conceived, designed and directed by Matías Ariel Ormeño; built with AI.
+The rest of this README and the code identifiers are in Spanish.
+
 Lee facturas electrónicas argentinas (PDF o imagen con el QR de ARCA) y las cruza con un CSV exportado del sistema de gestión.
 Responde en segundos qué facturas recibidas **falta cargar**, cuáles están **mal cargadas** y cuáles figuran **cargadas dos veces**.
 Para administración y cuentas a pagar. Todo corre en el navegador y todos los datos son ficticios.
