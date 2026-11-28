@@ -37,6 +37,7 @@
       <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5" /></symbol>
       <symbol id="i-punto" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5" fill="currentColor" stroke="none" /></symbol>
       <symbol id="i-alerta" viewBox="0 0 24 24"><path d="M12 4L21.5 20h-19z" /><path d="M12 10v4" /><path d="M12 17.2h.01" /></symbol>
+      <symbol id="i-error" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" /><path d="M9 9l6 6" /><path d="M15 9l-6 6" /></symbol>
       <symbol id="i-distinto" viewBox="0 0 24 24"><path d="M5 9h14" /><path d="M5 15h14" /><path d="M15 5l-6 14" /></symbol>
       <symbol id="i-guion" viewBox="0 0 24 24"><path d="M6 12h12" /></symbol>
       <symbol id="i-copias" viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2" /><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2" /></symbol>
@@ -54,6 +55,8 @@
       <symbol id="i-ubicacion" viewBox="0 0 24 24"><path d="M12 21s7-6.2 7-11a7 7 0 1 0-14 0c0 4.8 7 11 7 11z" /><circle cx="12" cy="10" r="2.5" /></symbol>
       <symbol id="i-reloj" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></symbol>
       <symbol id="i-planilla" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2" /><path d="M3 9.5h18" /><path d="M9 9.5V20" /><path d="M15 9.5V20" /></symbol>
+      <symbol id="i-pago" viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="2" /><circle cx="12" cy="12" r="2.5" /><path d="M6.5 9.5h.01" /><path d="M17.5 14.5h.01" /></symbol>
+      <symbol id="i-bandeja" viewBox="0 0 24 24"><path d="M4 13l2-8h12l2 8" /><path d="M4 13v6h16v-6" /><path d="M4 13h5l1 2.5h4l1-2.5h5" /></symbol>
     </svg>
 
     <a class="saltar" href="#resultado">Ir al resultado</a>
@@ -92,6 +95,21 @@
       </header>
 
       <main id="contenido">
+        <!-- Módulos de la página: dos pestañas (ARIA tabs). Cada panel se oculta con `hidden` y conserva su estado. Las maneja src/pestanas.ts. -->
+        <div class="pestanas-barra">
+          <div class="pestanas" role="tablist" aria-label="Módulos">
+            <button type="button" role="tab" id="pestana-facturas" aria-selected="true" aria-controls="panel-facturas" data-titulo="Lector y conciliador de facturas" data-saltar="titulo-resultado" data-saltar-texto="Ir al resultado">
+              <svg class="icono" aria-hidden="true" focusable="false"><use href="#i-planilla" /></svg>
+              <span>Facturas</span>
+            </button>
+            <button type="button" role="tab" id="pestana-pagos" aria-selected="false" aria-controls="panel-pagos" tabindex="-1" data-hash="pagos" data-titulo="Conciliador de pagos · Lector y conciliador de facturas" data-saltar="titulo-resultado-pagos" data-saltar-texto="Ir al resultado de pagos">
+              <svg class="icono" aria-hidden="true" focusable="false"><use href="#i-pago" /></svg>
+              <span>Pagos</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="panel" role="tabpanel" id="panel-facturas" aria-labelledby="pestana-facturas">
         <div class="encabezado">
           <div class="encabezado-texto">
             <p class="etiqueta-demo etiqueta-demo-encabezado">Demo con datos ficticios</p>
@@ -414,6 +432,17 @@
               </div>
             </details>
 
+            <!-- Control del comprobante: cuántos comprobantes tienen observaciones y un filtro para verlos. main.ts lo muestra y lo escribe. -->
+            <div class="control-resumen" id="control-resumen" data-tono="neutro" hidden>
+              <p class="control-texto">
+                <span class="control-icono" id="control-icono"></span>
+                <span><strong id="control-titular"></strong> <span class="control-detalle" id="control-detalle"></span></span>
+              </p>
+              <button type="button" class="boton boton-chico boton-secundario" id="control-filtrar" aria-pressed="false" aria-describedby="control-titular">
+                Ver solo estos
+              </button>
+            </div>
+
             <div class="tabla-envoltorio" id="envoltorio" hidden>
               <table id="tabla" class="sin-conciliar">
                 <caption class="solo-lectores">
@@ -440,7 +469,8 @@
 
               <p id="nota-ejemplo" class="nota nota-ejemplo" hidden>
                 Este ejemplo incluye a propósito casos difíciles: duplicado, mal cargado (otro importe u otro emisor), cargado dos
-                veces, CUIT inválido, fecha futura e imagen sin QR.
+                veces, CUIT inválido, fecha futura e imagen sin QR. Las filas 12 a 21 muestran el control del comprobante: total que no
+                cierra, factura C con IVA, CAE vencido, CUIT del receptor inválido y filas en orden (abra «Editar» para ver el desglose).
               </p>
 
               <div class="detalles-registro">
@@ -467,6 +497,348 @@
             <button type="button" class="boton boton-secundario boton-vaciar" id="vaciar">Vaciar planilla</button>
           </div>
         </section>
+        </div>
+
+        <!--
+          Pagos: segunda mitad del ciclo (factura recibida, cargada, pagada). Mismas ventanas que la pestaña Facturas.
+          Hasta que se carga un extracto solo se ven la portada y las dos primeras ventanas; las tres últimas llevan `ventana-con-extracto`.
+          Lo escribe src/pagos-pantalla.ts por los ids de acá. Todo texto de un archivo entra con textContent.
+        -->
+        <div class="panel panel-pagos" role="tabpanel" id="panel-pagos" aria-labelledby="pestana-pagos" hidden>
+          <div class="encabezado encabezado-pagos">
+            <div class="encabezado-texto">
+              <p class="etiqueta-demo etiqueta-demo-encabezado">Demo con datos ficticios</p>
+              <h1>Conciliador de pagos</h1>
+              <p class="bajada">
+                Cruza lo que se pagó con las facturas de la planilla y muestra qué facturas están pagadas, cuáles faltan y qué pagos
+                no tienen factura.
+              </p>
+              <p class="arranque">
+                <button type="button" class="boton boton-grande" id="pagos-ejemplo">Ver un ejemplo de pagos</button>
+                <span class="nota">Carga las facturas de ejemplo y un extracto ficticio.</span>
+              </p>
+            </div>
+          </div>
+
+          <section class="ventana" id="fuente-extracto" aria-labelledby="titulo-extracto">
+            <div class="ventana-barra">
+              <span class="ventana-icono ventana-paso" aria-hidden="true">1</span>
+              <h2 id="titulo-extracto" tabindex="-1">Extracto de pagos</h2>
+              <span class="ventana-meta num" id="meta-extracto"></span>
+              <div class="ventana-controles">
+                <button
+                  type="button"
+                  class="ventana-plegar"
+                  aria-expanded="true"
+                  aria-controls="interior-extracto"
+                  aria-label="Ver contenido de: Extracto de pagos"
+                >
+                  <svg class="icono" aria-hidden="true" focusable="false"><use href="#i-chevron" /></svg>
+                </button>
+              </div>
+            </div>
+
+            <div class="ventana-interior" id="interior-extracto">
+              <p class="fuente-explicacion">
+                Suba el CSV de pagos que exporta su banco o su sistema. Cada pago se cruza con las facturas de la planilla, en este
+                orden: por la referencia de la factura, por CUIT e importe y por suma de facturas. Lo dudoso no se decide: queda para revisar.
+              </p>
+
+              <div class="zona-fila">
+                <div class="zona zona-registro" id="zona-extracto" data-estado="vacia">
+                  <input id="archivo-extracto" class="zona-input" type="file" accept=".csv,text/csv,text/plain" />
+                  <label for="archivo-extracto" class="zona-etiqueta">
+                    <svg class="icono zona-icono zona-icono-subir" aria-hidden="true" focusable="false"><use href="#i-subir" /></svg>
+                    <svg class="icono zona-icono zona-icono-ok" aria-hidden="true" focusable="false"><use href="#i-check" /></svg>
+                    <span class="zona-texto">
+                      <span class="zona-titulo" id="estado-zona-extracto">Arrastre el CSV aquí o elíjalo</span>
+                      <span class="zona-ayuda">Hasta 2 MB y 20.000 líneas.</span>
+                    </span>
+                    <span class="zona-accion">Cambiar</span>
+                  </label>
+                </div>
+                <button type="button" class="boton-texto" id="quitar-extracto" hidden>Quitar extracto</button>
+              </div>
+
+              <p class="nota" id="facturas-a-conciliar"></p>
+
+              <details class="desplegable" id="detalle-formato-pagos">
+                <summary>
+                  <svg class="icono icono-chevron" aria-hidden="true" focusable="false"><use href="#i-chevron" /></svg>
+                  ¿Qué formato debe tener el extracto?
+                </summary>
+                <div class="desplegable-cuerpo">
+                  <p>
+                    CSV o archivo de texto con separador punto y coma, coma o tabulador y una primera línea de encabezados. Las columnas
+                    se reconocen por su nombre, sin importar mayúsculas, tildes ni orden:
+                  </p>
+                  <ul>
+                    <li><strong>Fecha</strong> (obligatoria): fecha, fecha de pago. Acepta DD/MM/AAAA y AAAA-MM-DD.</li>
+                    <li><strong>Importe</strong> (obligatoria): importe, monto. Acepta 1.234,56 y 1,234.56. Solo pesos.</li>
+                    <li><strong>CUIT</strong> y/o <strong>Referencia</strong> (al menos una): el CUIT del proveedor y el texto libre donde se escribe la factura («FA 0003-00001245»).</li>
+                    <li><strong>Opcionales:</strong> concepto, cargó, autorizó y operación. Con «Cargó» y «Autorizó» la página avisa cuando es la misma persona; con «Operación» detecta pagos duplicados.</li>
+                  </ul>
+                  <p>
+                    La página no calcula percepciones, retenciones ni alícuotas: si un pago es menor que la factura, es un pago parcial. Se
+                    perdonan diferencias de hasta 2 centavos.
+                  </p>
+                </div>
+              </details>
+
+              <p class="fuente-ejemplo">
+                <button type="button" class="boton-enlace" id="pagos-ejemplo-2">Probar solo con un extracto de ejemplo</button>
+                <span class="nota">Empresas, CUIT y usuarios inventados.</span>
+              </p>
+            </div>
+
+            <div class="ventana-estado"><p id="mensajes-pagos" class="mensajes" role="status" aria-live="polite"></p></div>
+          </section>
+
+          <section class="ventana" id="resultado-pagos" aria-labelledby="titulo-resultado-pagos">
+            <div class="ventana-barra">
+              <span class="ventana-icono ventana-paso" aria-hidden="true">2</span>
+              <h2 id="titulo-resultado-pagos" tabindex="-1">Resultado</h2>
+              <span class="ventana-meta num" id="meta-resultado-pagos"></span>
+              <div class="ventana-controles">
+                <button
+                  type="button"
+                  class="ventana-plegar"
+                  aria-expanded="true"
+                  aria-controls="interior-resultado-pagos"
+                  aria-label="Ver contenido de: Resultado"
+                >
+                  <svg class="icono" aria-hidden="true" focusable="false"><use href="#i-chevron" /></svg>
+                </button>
+              </div>
+            </div>
+
+            <div class="ventana-interior" id="interior-resultado-pagos">
+              <div class="vacio-resultado" id="vacio-pagos">
+                <div class="silueta" aria-hidden="true">
+                  <div class="silueta-principal">
+                    <span class="rotulo">Falta pagar</span>
+                    <span class="silueta-cifra">—</span>
+                  </div>
+                  <div class="silueta-filas">
+                    <span class="silueta-fila"></span>
+                    <span class="silueta-fila"></span>
+                    <span class="silueta-fila"></span>
+                  </div>
+                </div>
+                <div class="vacio-texto">
+                  <p>El resultado aparece aquí. Cargue un extracto de pagos o vea el ejemplo.</p>
+                  <button type="button" class="boton boton-secundario" id="pagos-ejemplo-3">Ver un ejemplo de pagos</button>
+                </div>
+              </div>
+
+              <div class="resultado-resumen" id="resumen-pagos" hidden>
+                <div class="protagonista" id="pagos-principal"></div>
+                <section class="atencion" aria-labelledby="titulo-atencion-pagos">
+                  <h3 id="titulo-atencion-pagos">Requieren atención</h3>
+                  <div id="pagos-atencion"></div>
+                </section>
+              </div>
+            </div>
+
+            <div class="ventana-estado linea-menor"><span id="pagos-menor"></span></div>
+          </section>
+
+          <section class="ventana ventana-con-extracto" id="excepciones-pagos" aria-labelledby="titulo-excepciones-pagos">
+            <div class="ventana-barra">
+              <svg class="icono ventana-icono" aria-hidden="true" focusable="false"><use href="#i-bandeja" /></svg>
+              <h2 id="titulo-excepciones-pagos" tabindex="-1">Excepciones</h2>
+              <span class="ventana-meta num" id="meta-excepciones-pagos"></span>
+              <div class="ventana-controles">
+                <button
+                  type="button"
+                  class="ventana-plegar"
+                  aria-expanded="true"
+                  aria-controls="interior-excepciones-pagos"
+                  aria-label="Ver contenido de: Excepciones"
+                >
+                  <svg class="icono" aria-hidden="true" focusable="false"><use href="#i-chevron" /></svg>
+                </button>
+              </div>
+            </div>
+
+            <div class="ventana-interior" id="interior-excepciones-pagos">
+              <p class="atencion-nada" id="sin-excepciones" hidden>
+                <svg class="icono" aria-hidden="true" focusable="false"><use href="#i-check" /></svg>
+                <span>Ningún pago quedó sin resolver: no hay nada para revisar.</span>
+              </p>
+              <div class="detalles-registro">
+                <section class="detalle-bloque" id="exc-sin-factura" data-tono="diferencia" aria-labelledby="titulo-exc-sin-factura" hidden>
+                  <h3 id="titulo-exc-sin-factura" tabindex="-1">Pagos sin factura</h3>
+                  <p class="nota">El proveedor no tiene ninguna factura abierta en la planilla. Puede faltar cargar la factura o ser un pago que no corresponde.</p>
+                  <ul id="lista-exc-sin-factura"></ul>
+                </section>
+                <section class="detalle-bloque" id="exc-revisar" data-tono="revisar" aria-labelledby="titulo-exc-revisar" hidden>
+                  <h3 id="titulo-exc-revisar" tabindex="-1">Pagos para revisar</h3>
+                  <p class="nota">No se puede saber a qué factura van. La página no elige: muestra las facturas que podrían ser.</p>
+                  <ul id="lista-exc-revisar"></ul>
+                </section>
+                <section class="detalle-bloque" id="exc-duplicados" data-tono="revisar" aria-labelledby="titulo-exc-duplicados" hidden>
+                  <h3 id="titulo-exc-duplicados" tabindex="-1">Pagos duplicados</h3>
+                  <p class="nota">Es el mismo pago dos veces. No se cuenta dos veces ni resta saldo a ninguna factura.</p>
+                  <ul id="lista-exc-duplicados"></ul>
+                </section>
+                <section class="detalle-bloque" id="exc-usuario" data-tono="revisar" aria-labelledby="titulo-exc-usuario" hidden>
+                  <h3 id="titulo-exc-usuario" tabindex="-1">Cargado y autorizado por la misma persona</h3>
+                  <p class="nota">Control interno: conviene que otra persona autorice el pago. No cambia con qué factura se emparejó.</p>
+                  <ul id="lista-exc-usuario"></ul>
+                </section>
+                <section class="detalle-bloque" id="exc-cuit" data-tono="diferencia" aria-labelledby="titulo-exc-cuit" hidden>
+                  <h3 id="titulo-exc-cuit" tabindex="-1">Pagos con CUIT inválido</h3>
+                  <p class="nota">El dígito verificador no cierra, así que el CUIT no se usó para cruzar. Conviene corregirlo en el extracto.</p>
+                  <ul id="lista-exc-cuit"></ul>
+                </section>
+                <section class="detalle-bloque" id="exc-operacion" data-tono="revisar" aria-labelledby="titulo-exc-operacion" hidden>
+                  <h3 id="titulo-exc-operacion" tabindex="-1">Número de operación repetido</h3>
+                  <p class="nota">El banco repitió el número, pero con otro CUIT u otro importe: se cuentan como pagos distintos. Conviene mirar el extracto.</p>
+                  <ul id="lista-exc-operacion"></ul>
+                </section>
+                <section class="detalle-bloque" id="exc-ilegibles" data-tono="neutro" aria-labelledby="titulo-exc-ilegibles" hidden>
+                  <h3 id="titulo-exc-ilegibles" tabindex="-1">Líneas del extracto que no se leyeron</h3>
+                  <p class="nota">Se ignoraron, con su motivo. No frenan al resto.</p>
+                  <ul id="lista-exc-ilegibles"></ul>
+                </section>
+                <section class="detalle-bloque" id="exc-omitidas" data-tono="neutro" aria-labelledby="titulo-exc-omitidas" hidden>
+                  <h3 id="titulo-exc-omitidas" tabindex="-1">Facturas de la planilla que no se concilian</h3>
+                  <p class="nota">No entran al cruce, por el motivo que se indica.</p>
+                  <ul id="lista-exc-omitidas"></ul>
+                </section>
+              </div>
+            </div>
+          </section>
+
+          <section class="ventana ventana-pagos ventana-con-extracto" id="facturas-pagos" aria-labelledby="titulo-facturas-pagos">
+            <div class="ventana-cabeza">
+              <div class="ventana-barra">
+                <svg class="icono ventana-icono" aria-hidden="true" focusable="false"><use href="#i-planilla" /></svg>
+                <h2 id="titulo-facturas-pagos" tabindex="-1">Facturas y su estado de pago</h2>
+                <span class="ventana-meta num" id="meta-facturas-pagos"></span>
+                <div class="ventana-controles">
+                  <button
+                    type="button"
+                    class="ventana-plegar"
+                    aria-expanded="true"
+                    aria-controls="barra-facturas-pagos interior-facturas-pagos"
+                    aria-label="Ver contenido de: Facturas y su estado de pago"
+                  >
+                    <svg class="icono" aria-hidden="true" focusable="false"><use href="#i-chevron" /></svg>
+                  </button>
+                </div>
+              </div>
+              <div class="ventana-herramientas barra-pagos" id="barra-facturas-pagos">
+                <fieldset class="filtros filtros-de-tres" id="filtros-facturas-pagos">
+                  <legend>Mostrar en la lista</legend>
+                  <span class="filtro-opcion">
+                    <input type="radio" name="filtro-facturas-pagos" id="filtro-fp-todas" value="todas" checked />
+                    <label for="filtro-fp-todas">Todas <span class="conteo" id="conteo-fp-todas"></span></label>
+                  </span>
+                  <span class="filtro-opcion">
+                    <input type="radio" name="filtro-facturas-pagos" id="filtro-fp-falta" value="falta" />
+                    <label for="filtro-fp-falta">Falta pagar <span class="conteo" id="conteo-fp-falta"></span></label>
+                  </span>
+                  <span class="filtro-opcion">
+                    <input type="radio" name="filtro-facturas-pagos" id="filtro-fp-pagadas" value="pagadas" />
+                    <label for="filtro-fp-pagadas">Pagadas <span class="conteo" id="conteo-fp-pagadas"></span></label>
+                  </span>
+                </fieldset>
+                <button type="button" class="boton boton-secundario boton-exportar" id="exportar-facturas-pagos">
+                  <svg class="icono" aria-hidden="true" focusable="false"><use href="#i-csv" /></svg>
+                  Exportar CSV
+                </button>
+              </div>
+            </div>
+
+            <div class="ventana-interior" id="interior-facturas-pagos">
+              <div class="tabla-envoltorio" id="envoltorio-facturas-pagos">
+                <table class="tabla-pagos tabla-facturas-pagos" id="tabla-facturas-pagos">
+                  <caption class="solo-lectores">Facturas de la planilla con su estado de pago: pagada, pago parcial con su saldo o impaga con los días desde la emisión.</caption>
+                  <thead>
+                    <tr>
+                      <th scope="col" class="p-estado">Estado</th>
+                      <th scope="col" class="p-factura">Factura</th>
+                      <th scope="col" class="p-fecha">Fecha</th>
+                      <th scope="col" class="p-importe">Importe</th>
+                      <th scope="col" class="p-importe">Pagado</th>
+                      <th scope="col" class="p-importe">Saldo</th>
+                      <th scope="col" class="p-dias">Días</th>
+                    </tr>
+                  </thead>
+                  <tbody id="cuerpo-facturas-pagos"></tbody>
+                </table>
+              </div>
+              <div class="mas-filas" id="mas-facturas-pagos-caja" hidden>
+                <button type="button" class="boton boton-secundario" id="mas-facturas-pagos"></button>
+              </div>
+            </div>
+          </section>
+
+          <section class="ventana ventana-pagos ventana-con-extracto" id="lista-pagos" aria-labelledby="titulo-lista-pagos">
+            <div class="ventana-cabeza">
+              <div class="ventana-barra">
+                <svg class="icono ventana-icono" aria-hidden="true" focusable="false"><use href="#i-pago" /></svg>
+                <h2 id="titulo-lista-pagos" tabindex="-1">Pagos y con qué factura se emparejaron</h2>
+                <span class="ventana-meta num" id="meta-lista-pagos"></span>
+                <div class="ventana-controles">
+                  <button
+                    type="button"
+                    class="ventana-plegar"
+                    aria-expanded="true"
+                    aria-controls="barra-lista-pagos interior-lista-pagos"
+                    aria-label="Ver contenido de: Pagos y con qué factura se emparejaron"
+                  >
+                    <svg class="icono" aria-hidden="true" focusable="false"><use href="#i-chevron" /></svg>
+                  </button>
+                </div>
+              </div>
+              <div class="ventana-herramientas barra-pagos" id="barra-lista-pagos">
+                <fieldset class="filtros filtros-de-tres" id="filtros-lista-pagos">
+                  <legend>Mostrar en la lista</legend>
+                  <span class="filtro-opcion">
+                    <input type="radio" name="filtro-lista-pagos" id="filtro-lp-todos" value="todos" checked />
+                    <label for="filtro-lp-todos">Todos <span class="conteo" id="conteo-lp-todos"></span></label>
+                  </span>
+                  <span class="filtro-opcion">
+                    <input type="radio" name="filtro-lista-pagos" id="filtro-lp-emparejados" value="emparejados" />
+                    <label for="filtro-lp-emparejados">Emparejados <span class="conteo" id="conteo-lp-emparejados"></span></label>
+                  </span>
+                  <span class="filtro-opcion">
+                    <input type="radio" name="filtro-lista-pagos" id="filtro-lp-excepciones" value="excepciones" />
+                    <label for="filtro-lp-excepciones">Con excepción <span class="conteo" id="conteo-lp-excepciones"></span></label>
+                  </span>
+                </fieldset>
+                <button type="button" class="boton boton-secundario boton-exportar" id="exportar-lista-pagos">
+                  <svg class="icono" aria-hidden="true" focusable="false"><use href="#i-csv" /></svg>
+                  Exportar CSV
+                </button>
+              </div>
+            </div>
+
+            <div class="ventana-interior" id="interior-lista-pagos">
+              <div class="tabla-envoltorio" id="envoltorio-lista-pagos">
+                <table class="tabla-pagos tabla-lista-pagos" id="tabla-lista-pagos">
+                  <caption class="solo-lectores">Pagos del extracto con su resultado, la factura a la que se aplicaron y el motivo.</caption>
+                  <thead>
+                    <tr>
+                      <th scope="col" class="p-linea">Línea</th>
+                      <th scope="col" class="p-estado">Resultado</th>
+                      <th scope="col" class="p-pago">Pago</th>
+                      <th scope="col" class="p-importe">Importe</th>
+                      <th scope="col" class="p-motivo">Con qué factura y por qué</th>
+                    </tr>
+                  </thead>
+                  <tbody id="cuerpo-lista-pagos"></tbody>
+                </table>
+              </div>
+              <div class="mas-filas" id="mas-lista-pagos-caja" hidden>
+                <button type="button" class="boton boton-secundario" id="mas-lista-pagos"></button>
+              </div>
+            </div>
+          </section>
+        </div>
       </main>
 
       <footer class="pie">
@@ -627,6 +999,17 @@
                 El archivo de su sistema trae el mismo comprobante (mismo CUIT, tipo, punto de venta y número) más de una vez.
                 El sistema no debería permitirlo. La página compara el comprobante leído con todas las copias y dice cuál
                 sobra; si ninguna coincide, hay que dar de baja todas y cargarlo una sola vez con los datos correctos.
+              </p>
+            </details>
+            <details>
+              <summary>
+                <svg class="icono icono-chevron" aria-hidden="true" focusable="false"><use href="#i-chevron" /></svg>
+                ¿Para qué sirve la pestaña «Pagos»?
+              </summary>
+              <p>
+                Cierra el ciclo: cruza un extracto de pagos con las facturas de la planilla y dice cuáles están pagadas, cuáles tienen un
+                pago parcial o faltan, y qué pagos no tienen factura, están duplicados o requieren revisión. No calcula retenciones ni
+                impuestos.
               </p>
             </details>
             <details>

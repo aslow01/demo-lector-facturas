@@ -18,7 +18,7 @@ import { agregarFila, crearFila, siguienteId, totalesPorMoneda, type Fila } from
 import { leerUrlQr } from "../src/qr-arca.ts";
 import { anuncioConciliacion, etiquetaConciliacion, metaResultado, protagonista } from "../src/vista.ts";
 
-const HOY = new Date(2026, 10, 17);
+const HOY = new Date(2026, 10, 17, 12);
 const CUIT = "30990000014";
 
 function dato(cambios: Partial<Comprobante> = {}): Comprobante {

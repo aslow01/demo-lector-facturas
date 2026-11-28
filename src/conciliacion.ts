@@ -18,8 +18,10 @@ import {
   parsearImporteTexto,
   pesosPrimero,
   problemaDeImporte,
+  tieneTresDecimalesAmbiguos,
   type Campo,
 } from "./comprobante.ts";
+import { normalizarVencimiento, type Desglose } from "./control.ts";
 import { formatearCuit } from "./cuit.ts";
 import { duplicadas, estadoFila, totalesPorMoneda, type Fila, type TotalMoneda } from "./planilla.ts";
 
@@ -44,6 +46,11 @@ export interface Registro {
   importe: number;
   /** Línea del archivo (el encabezado es la línea 1). */
   linea: number;
+  /**
+   * Neto, IVA, otros conceptos y vencimiento del CAE, si el archivo trae esas columnas y la línea las completó. Es lo que el QR
+   * no trae y el control del comprobante necesita para el cuadre del total. Si la clave se repite, vale el de la primera línea.
+   */
+  desglose?: Desglose;
   /**
    * Solo si el archivo repite la clave (el comprobante figura más de una vez): una entrada por copia, en el orden del archivo,
    * con la primera incluida. `importe` y `linea` de arriba son los de la primera.
@@ -76,6 +83,11 @@ export interface LecturaRegistro {
   clavesRepetidas: ClaveRepetida[];
   /** Columnas que el encabezado trae más de una vez (se usa la primera). Por ejemplo `["CUIT"]`. */
   encabezadosDuplicados: string[];
+  /**
+   * Líneas válidas cuyo neto, IVA, otros conceptos o vencimiento del CAE no se pudo leer. La línea no se descarta (concilia igual):
+   * solo se ignora ese dato.
+   */
+  lineasDesgloseIlegible: number[];
 }
 
 export type Resultado =
@@ -201,6 +213,19 @@ const COLUMNAS: Record<ColumnaClave, { etiqueta: string; nombres: string[] }> = 
   importe: { etiqueta: "importe", nombres: ["importe", "total"] },
 };
 
+type ColumnaDesglose = "neto" | "iva" | "otros" | "vencimientoCae";
+
+/** Columnas opcionales: si el archivo no las trae, se lee igual que siempre. */
+const COLUMNAS_DESGLOSE: Record<ColumnaDesglose, { etiqueta: string; nombres: string[] }> = {
+  neto: { etiqueta: "neto", nombres: ["neto", "neto gravado", "importe neto", "importe neto gravado", "imp neto gravado"] },
+  iva: { etiqueta: "IVA", nombres: ["iva", "importe iva", "iva total", "total iva"] },
+  otros: { etiqueta: "otros conceptos", nombres: ["otros", "otros tributos", "otros conceptos", "importe otros tributos"] },
+  vencimientoCae: {
+    etiqueta: "vencimiento del CAE",
+    nombres: ["vencimiento cae", "vencimiento del cae", "fecha vencimiento cae", "vto cae", "fecha vto cae", "venc cae", "cae vencimiento", "cae vto"],
+  },
+};
+
 const NOMBRES_DE_TIPO_NORMALIZADOS = new Map<string, number>(
   Object.entries(NOMBRES_TIPO).map(([codigo, nombre]) => [normalizarTexto(nombre), Number(codigo)] as const),
 );
@@ -226,6 +251,7 @@ function importeCrudo(texto: string): number | null {
   if (punto >= 0 && coma >= 0) {
     const [decimal, miles] = punto > coma ? [".", ","] : [",", "."];
     if (t.split(decimal).length !== 2) return null;
+    if (tieneTresDecimalesAmbiguos(t, decimal)) return null;
     const limpio = t.split(miles).join("").replace(decimal, ".");
     return /^-?\d+(\.\d+)?$/.test(limpio) ? Number(limpio) : null;
   }
@@ -235,14 +261,15 @@ function importeCrudo(texto: string): number | null {
 /**
  * Importe de una celda del registro. Con punto y coma a la vez, el último de los dos es el separador decimal
  * (`1.234,56` y `1,234.56` valen 1234,56). Con uno solo, vale lo de `parsearImporteTexto`. Acepta un `$` delante.
- * Más de 2 decimales (`1,234` no se lee como 1,23) o más de 12 dígitos enteros no son un importe: devuelve `null`.
+ * Más de 2 decimales (`1,234` no se lee como 1,23), una coma con exactamente tres dígitos detrás (`1,500`: ¿miles o decimales?) o más
+ * de 12 dígitos enteros no son un importe: devuelve `null`.
  */
 export function interpretarImporte(texto: string): number | null {
   const n = importeCrudo(texto);
   return n === null || problemaDeImporte(n) !== null ? null : n;
 }
 
-interface RegistroCrudo {
+export interface RegistroCrudo {
   linea: number;
   campos: string[];
 }
@@ -272,7 +299,7 @@ export function detectarSeparador(texto: string): ";" | "," | "\t" {
  * CSV estándar: comillas dobles, comillas escapadas duplicadas y saltos de línea dentro de comillas. Omite líneas vacías.
  * `comillaAbiertaEn` es la línea donde se abrió una comilla que nunca se cerró (`null` si todas se cerraron).
  */
-function partirRegistros(texto: string, separador: string): { registros: RegistroCrudo[]; comillaAbiertaEn: number | null } {
+export function partirRegistros(texto: string, separador: string): { registros: RegistroCrudo[]; comillaAbiertaEn: number | null } {
   const salida: RegistroCrudo[] = [];
   let campos: string[] = [];
   let actual = "";
@@ -360,8 +387,19 @@ export function leerRegistro(texto: string): LecturaRegistro | Error {
     if (posiciones.length > 1) encabezadosDuplicados.push(etiqueta);
   }
 
+  const indiceDesglose: Partial<Record<ColumnaDesglose, number>> = {};
+  for (const clave of Object.keys(COLUMNAS_DESGLOSE) as ColumnaDesglose[]) {
+    const { etiqueta, nombres: aceptados } = COLUMNAS_DESGLOSE[clave];
+    const posiciones = nombres.flatMap((n, i) => (aceptados.includes(n) ? [i] : []));
+    const primera = posiciones[0];
+    if (primera === undefined) continue;
+    indiceDesglose[clave] = primera;
+    if (posiciones.length > 1) encabezadosDuplicados.push(etiqueta);
+  }
+
   const lineasInvalidas: number[] = [];
   const lineasImporteExcesivo: number[] = [];
+  const lineasDesgloseIlegible: number[] = [];
   const porClave = new Map<string, ClaveRepetida>();
 
   for (const crudo of crudos.slice(1)) {
@@ -388,7 +426,13 @@ export function leerRegistro(texto: string): LecturaRegistro | Error {
       previa.registro.copias ??= [{ linea: previa.registro.linea, importe: previa.registro.importe }];
       previa.registro.copias.push({ linea: crudo.linea, importe });
     } else {
-      porClave.set(clave, { registro: { cuit, tipoCmp, ptoVta, nroCmp, importe, linea: crudo.linea }, veces: 1, lineas: [crudo.linea] });
+      const { desglose, ilegible } = leerDesglose(c, indiceDesglose);
+      if (ilegible) lineasDesgloseIlegible.push(crudo.linea);
+      porClave.set(clave, {
+        registro: { cuit, tipoCmp, ptoVta, nroCmp, importe, linea: crudo.linea, ...(desglose === undefined ? {} : { desglose }) },
+        veces: 1,
+        lineas: [crudo.linea],
+      });
     }
   }
 
@@ -399,7 +443,38 @@ export function leerRegistro(texto: string): LecturaRegistro | Error {
     lineasImporteExcesivo,
     clavesRepetidas: todas.filter((x) => x.veces > 1),
     encabezadosDuplicados,
+    lineasDesgloseIlegible,
   };
+}
+
+/**
+ * El desglose de una línea. Una celda vacía es "no informado". Una que no se puede leer (texto, más de 2 decimales, una fecha imposible,
+ * una fórmula) se ignora y se avisa; nunca invalida la línea. Sin ningún dato leído no hay desglose.
+ */
+function leerDesglose(c: readonly string[], indice: Partial<Record<ColumnaDesglose, number>>): { desglose?: Desglose; ilegible: boolean } {
+  let ilegible = false;
+  const celda = (columna: ColumnaDesglose): string => {
+    const i = indice[columna];
+    return i === undefined ? "" : (c[i] ?? "").trim();
+  };
+  const importe = (columna: ColumnaDesglose): number | null => {
+    const texto = celda(columna);
+    if (texto === "") return null;
+    const n = interpretarImporte(texto);
+    if (n === null) ilegible = true;
+    return n;
+  };
+  const textoVencimiento = celda("vencimientoCae");
+  const vencimiento = textoVencimiento === "" ? "" : normalizarVencimiento(textoVencimiento);
+  if (vencimiento === null) ilegible = true;
+  const desglose: Desglose = { neto: importe("neto"), iva: importe("iva"), otros: importe("otros"), vencimientoCae: vencimiento ?? "" };
+  const hayDato = desglose.neto !== null || desglose.iva !== null || desglose.otros !== null || desglose.vencimientoCae !== "";
+  return hayDato ? { desglose, ilegible } : { ilegible };
+}
+
+/** Cuántos comprobantes del registro traen desglose (la clave repetida cuenta una vez). */
+export function contarConDesglose(l: LecturaRegistro): number {
+  return l.registros.filter((r) => r.desglose !== undefined).length;
 }
 
 /** Líneas del archivo que se leyeron bien: una por comprobante distinto más una por cada copia de una clave repetida. */
@@ -423,6 +498,16 @@ export function describirImportesExcesivos(lineas: readonly number[]): string {
   const resto = lineas.length > 15 ? ` y ${lineas.length - 15} más` : "";
   const sujeto = lineas.length === 1 ? "1 línea tiene un importe" : `${lineas.length} líneas tienen un importe`;
   return `${sujeto} con más de 2 decimales o más de 12 dígitos enteros: ${visibles}${resto}.`;
+}
+
+/** "1 línea tiene un neto, IVA, otros conceptos o vencimiento del CAE que no se pudo leer: 4. Se ignoró ese dato." Hasta 15 números. */
+export function describirDesgloseIlegible(lineas: readonly number[]): string {
+  if (lineas.length === 0) return "";
+  const visibles = lineas.slice(0, 15).join(", ");
+  const resto = lineas.length > 15 ? ` y ${lineas.length - 15} más` : "";
+  const uno = lineas.length === 1;
+  const sujeto = uno ? "1 línea tiene" : `${lineas.length} líneas tienen`;
+  return `${sujeto} un neto, IVA, otros conceptos o vencimiento del CAE que no se ${uno ? "pudo" : "pudieron"} leer: ${visibles}${resto}. Se ${uno ? "ignoró ese dato" : "ignoraron esos datos"}.`;
 }
 
 /** "Hay más de una columna de CUIT: se usó la primera." Vacío si no hay encabezados repetidos. */

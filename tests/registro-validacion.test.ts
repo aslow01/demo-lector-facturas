@@ -6,7 +6,7 @@ import { esTipoConocido } from "../src/comprobante.ts";
 import { conciliar, leerRegistro, lineasLeidas, resumenConciliacion, type LecturaRegistro } from "../src/conciliacion.ts";
 import { textoRegistroCargado } from "../src/vista.ts";
 
-const HOY = new Date(2026, 10, 17);
+const HOY = new Date(2026, 10, 17, 12);
 const CUIT = "30990000014";
 
 function leer(...lineas: string[]): LecturaRegistro {

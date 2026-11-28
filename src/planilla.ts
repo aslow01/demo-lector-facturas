@@ -17,6 +17,7 @@ import {
   type Comprobante,
   type Estado,
 } from "./comprobante.ts";
+import { controlarComprobante, type CodigoObservacion, type Desglose, type Observacion } from "./control.ts";
 
 export interface Fila {
   id: number;
@@ -31,6 +32,11 @@ export interface Fila {
   datos: Comprobante;
   /** Campos que el usuario corrigió a mano. */
   editados: Campo[];
+  /**
+   * Neto, IVA, otros conceptos y vencimiento del CAE, si quien cargó el comprobante los informó (el QR no los trae).
+   * Sin esto el control del comprobante no puede comprobar el cuadre del total ni el vencimiento del CAE.
+   */
+  desglose?: Desglose;
 }
 
 export interface TotalMoneda {
@@ -50,7 +56,7 @@ export interface Resumen {
   editadas: number;
 }
 
-export function crearFila(id: number, origen: string, comprobante: Comprobante | null, nota = "", detalle = ""): Fila {
+export function crearFila(id: number, origen: string, comprobante: Comprobante | null, nota = "", detalle = "", desglose?: Desglose): Fila {
   return {
     id,
     origen,
@@ -59,6 +65,7 @@ export function crearFila(id: number, origen: string, comprobante: Comprobante |
     detalle,
     datos: comprobante ?? comprobanteVacio(),
     editados: [],
+    ...(desglose === undefined ? {} : { desglose }),
   };
 }
 
@@ -74,10 +81,21 @@ export function quitarFila(filas: readonly Fila[], id: number): Fila[] {
   return filas.filter((f) => f.id !== id);
 }
 
+/** Lo que `motivosRevisar` ya dice: el control del comprobante lo repite, pero en el estado no se muestra dos veces. */
+const YA_DICHAS_POR_EL_ESTADO: ReadonlySet<CodigoObservacion> = new Set(["cuit-emisor", "fecha", "fecha-futura"]);
+
+/** Observaciones del control del comprobante que el estado todavía no decía (cuadre, letra, CUIT del receptor, CAE). Vacío sin QR. */
+export function controlesDeFila(fila: Fila, hoy: Date = new Date()): Observacion[] {
+  if (!fila.conQr) return [];
+  return controlarComprobante(fila.datos, fila.desglose, hoy).filter((o) => !YA_DICHAS_POR_EL_ESTADO.has(o.codigo));
+}
+
 export function estadoFila(fila: Fila, hoy: Date = new Date()): { estado: Estado; motivos: string[] } {
   // Una fila sin QR sigue "sin QR" aunque se complete a mano: la lectura automática no la validó.
   if (!fila.conQr) return estadoDe(null, hoy);
-  return estadoDe(fila.datos, hoy);
+  const base = estadoDe(fila.datos, hoy);
+  const motivos = [...base.motivos, ...controlesDeFila(fila, hoy).map((o) => o.mensaje)];
+  return { estado: motivos.length > 0 ? "revisar" : "leida", motivos };
 }
 
 /** Mapa `id de la fila duplicada → id de la primera fila con la misma clave`. La primera queda como original. */

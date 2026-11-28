@@ -20,7 +20,7 @@ import { aCsv } from "../src/csv.ts";
 import { crearFila, type Fila } from "../src/planilla.ts";
 import { detalleFila, etiquetaConciliacion } from "../src/vista.ts";
 
-const HOY = new Date(2026, 10, 17);
+const HOY = new Date(2026, 10, 17, 12);
 const CUIT_A = "30990001010";
 const CUIT_B = "33990002016";
 

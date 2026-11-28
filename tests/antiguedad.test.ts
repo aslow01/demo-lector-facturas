@@ -90,13 +90,17 @@ describe("textos y umbral", () => {
 });
 
 describe("fecha de referencia", () => {
-  const hoy = new Date(2026, 10, 17);
+  const hoy = new Date("2026-11-17T15:00:00Z"); // mediodía en Argentina
   it("en el ejemplo completo es fija, para que no cambie con el paso del tiempo", () => {
     const r = resolverReferencia({ manual: "", soloEjemplo: true, hoy });
     expect(r).toEqual({ fecha: FECHA_REFERENCIA_EJEMPLO, origen: "ejemplo" });
-    expect(resolverReferencia({ manual: "", soloEjemplo: true, hoy: new Date(2030, 0, 1) }).fecha).toBe(FECHA_REFERENCIA_EJEMPLO);
+    expect(resolverReferencia({ manual: "", soloEjemplo: true, hoy: new Date(2030, 0, 1, 12) }).fecha).toBe(FECHA_REFERENCIA_EJEMPLO);
   });
-  it("con archivos propios es hoy (fecha local)", () => {
+  it("hoy es el día de Argentina, sin importar el huso de la computadora (22:30 del 12/11 allá es el 13/11 en UTC)", () => {
+    const tardeEnArgentina = new Date("2026-11-13T01:30:00Z");
+    expect(resolverReferencia({ manual: "", soloEjemplo: false, hoy: tardeEnArgentina })).toEqual({ fecha: "2026-11-12", origen: "hoy" });
+  });
+  it("con archivos propios es hoy (el día de Argentina)", () => {
     expect(resolverReferencia({ manual: "", soloEjemplo: false, hoy })).toEqual({ fecha: "2026-11-17", origen: "hoy" });
   });
   it("una fecha elegida por el usuario manda sobre las otras; una inválida se ignora", () => {
@@ -164,7 +168,7 @@ describe("orden por antigüedad", () => {
 
 describe("en el ejemplo completo, con la referencia fija", () => {
   it("hay una factura de 31 días (marcada) y otra de 28 (sin marcar)", () => {
-    const filas = generarEjemplos(new Date(2026, 10, 17)).map((e, i) => {
+    const filas = generarEjemplos(new Date(2026, 10, 17, 12)).map((e, i) => {
       const c = e.url === null ? null : leerUrlQr(e.url);
       return crearFila(i + 1, e.origen, c !== null && !(c instanceof Error) ? c : null);
     });
@@ -221,7 +225,7 @@ describe("validarFechaReferencia", () => {
 });
 
 describe("resolverReferencia con fechas fuera de rango", () => {
-  const hoy = new Date(2026, 10, 17);
+  const hoy = new Date("2026-11-17T15:00:00Z"); // mediodía en Argentina
   it("una fecha manual fuera de 2000 a 2100 no se usa", () => {
     expect(resolverReferencia({ manual: "9999-12-31", soloEjemplo: false, hoy }).origen).toBe("hoy");
     expect(resolverReferencia({ manual: "1999-12-31", soloEjemplo: true, hoy }).origen).toBe("ejemplo");

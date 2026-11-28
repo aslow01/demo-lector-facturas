@@ -2,7 +2,7 @@
 // No dice nada fiscal (plazos, períodos, créditos): solo cuánto hace que se emitió y todavía no está cargada.
 // Funciones puras, sin acceso al navegador.
 
-import { conMiles, formatearFecha, normalizarFecha } from "./comprobante.ts";
+import { conMiles, fechaArgentinaIso, formatearFecha, normalizarFecha } from "./comprobante.ts";
 import type { Resultado } from "./conciliacion.ts";
 import type { Fila } from "./planilla.ts";
 
@@ -104,21 +104,15 @@ export interface Referencia {
   origen: OrigenReferencia;
 }
 
-function hoyIso(hoy: Date): string {
-  const mm = String(hoy.getMonth() + 1).padStart(2, "0");
-  const dd = String(hoy.getDate()).padStart(2, "0");
-  return `${String(hoy.getFullYear()).padStart(4, "0")}-${mm}-${dd}`;
-}
-
 /**
  * Qué fecha se usa: la que eligió el usuario (si es válida); si no, la fija del ejemplo cuando la planilla solo tiene filas
- * de ejemplo; si no, hoy (fecha local).
+ * de ejemplo; si no, hoy (el día de Argentina, como en el resto de la demo).
  */
 export function resolverReferencia(o: { manual: string; soloEjemplo: boolean; hoy: Date }): Referencia {
   const manual = referenciaSoportada(o.manual);
   if (manual !== null) return { fecha: manual, origen: "manual" };
   if (o.soloEjemplo) return { fecha: FECHA_REFERENCIA_EJEMPLO, origen: "ejemplo" };
-  return { fecha: hoyIso(o.hoy), origen: "hoy" };
+  return { fecha: fechaArgentinaIso(o.hoy), origen: "hoy" };
 }
 
 const ORIGEN_EN_PALABRAS: Record<OrigenReferencia, string> = {

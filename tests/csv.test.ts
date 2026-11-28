@@ -2,9 +2,10 @@ import { describe, expect, it } from "vitest";
 import type { Comprobante } from "../src/comprobante.ts";
 import { BOM, ENCABEZADOS, aCsv, celdaNumero, celdaTexto } from "../src/csv.ts";
 import type { Resultado } from "../src/conciliacion.ts";
+import { nombreSeveridad, observacionesDeFila } from "../src/vista-control.ts";
 import { agregarFila, crearFila, editarFila, siguienteId, type Fila } from "../src/planilla.ts";
 
-const HOY = new Date(2026, 10, 17);
+const HOY = new Date(2026, 10, 17, 12);
 
 function dato(cambios: Partial<Comprobante> = {}): Comprobante {
   return {
@@ -160,6 +161,20 @@ describe("aCsv", () => {
     expect(revisar).toContain("Revisar");
     expect(revisar).toContain("El total es cero.");
     expect(sinQr.startsWith("nada.pdf;Sin QR;")).toBe(true);
+  });
+
+  it("cada observación del control lleva su gravedad y dice lo mismo que la pantalla", () => {
+    const filas = [crearFila(1, "mala.pdf", dato({ fecha: "2026-12-28", importe: 0, codAut: "123" }))];
+    const [, fila] = lineas(aCsv(filas, HOY)) as [string, string];
+    const avisos = fila.split(";")[2];
+    expect(avisos).toBe("Error: La fecha de emisión es futura. Error: El CAE debe tener 14 dígitos. Aviso: El total es cero.");
+    const enPantalla = observacionesDeFila(filas[0] as Fila, HOY).map((o) => `${nombreSeveridad(o.severidad)}: ${o.mensaje}`);
+    expect(avisos).toBe(enPantalla.join(" "));
+  });
+
+  it("la nota de la fila va sin prefijo, antes de las observaciones", () => {
+    const filas = [crearFila(1, "mala.pdf", dato({ importe: 0 }), "Nota de la lectura.")];
+    expect(lineas(aCsv(filas, HOY))[1]?.split(";")[2]).toBe("Nota de la lectura. Aviso: El total es cero.");
   });
 
   it("marca los duplicados y deja vacío su importe en el total", () => {

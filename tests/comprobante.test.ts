@@ -3,9 +3,11 @@ import {
   claveDuplicado,
   comprobanteVacio,
   estadoDe,
+  fechaArgentinaIso,
   formatearFecha,
   formatearImporte,
   formatearNumeroCmp,
+  motivosDeLectura,
   motivosRevisar,
   nombreTipo,
   normalizarFecha,
@@ -13,7 +15,7 @@ import {
   type Comprobante,
 } from "../src/comprobante.ts";
 
-const HOY = new Date(2026, 10, 17); // 17/11/2026, hora local
+const HOY = new Date("2026-11-17T15:00:00Z"); // 12:00 del 17/11/2026 en Argentina (UTC-3), el mismo instante en cualquier huso
 
 function valido(cambios: Partial<Comprobante> = {}): Comprobante {
   return {
@@ -116,6 +118,45 @@ describe("estadoDe", () => {
   });
   it("un comprobante vacío sale con varios motivos", () => {
     expect(motivosRevisar(comprobanteVacio(), HOY).length).toBeGreaterThan(3);
+  });
+});
+
+describe("el día de hoy es el de Argentina", () => {
+  // 22:30 del 17/11 en Buenos Aires = 01:30 UTC del 18/11 (en Tokio o en Madrid ya es 18/11). Instante fijo: no depende del huso de la máquina.
+  const NOCHE_EN_ARGENTINA = new Date("2026-11-18T01:30:00Z");
+
+  it("fechaArgentinaIso da el día de Buenos Aires, no el del navegador", () => {
+    expect(fechaArgentinaIso(NOCHE_EN_ARGENTINA)).toBe("2026-11-17");
+    expect(fechaArgentinaIso(new Date("2026-11-17T02:59:59Z"))).toBe("2026-11-16");
+    expect(fechaArgentinaIso(new Date("2026-11-17T03:00:00Z"))).toBe("2026-11-17");
+  });
+  it("una factura emitida hoy en Argentina no es futura, esté donde esté quien la mira", () => {
+    expect(motivosRevisar(valido({ fecha: "2026-11-17" }), NOCHE_EN_ARGENTINA)).toEqual([]);
+    expect(estadoDe(valido({ fecha: "2026-11-17" }), NOCHE_EN_ARGENTINA).estado).toBe("leida");
+  });
+  it("la del día siguiente a hoy en Argentina sí es futura", () => {
+    expect(motivosRevisar(valido({ fecha: "2026-11-18" }), NOCHE_EN_ARGENTINA)).toEqual(["La fecha de emisión es futura."]);
+  });
+});
+
+describe("motivosDeLectura: cada motivo trae su código", () => {
+  it("los motivos de siempre, con código y las mismas palabras que el control del comprobante", () => {
+    const c = valido({ cuit: "", fecha: "", importe: 0, tipoCmp: null, ver: 2 });
+    expect(motivosDeLectura(c, HOY)).toEqual([
+      { codigo: "cuit-emisor", mensaje: "Falta el CUIT del emisor." },
+      { codigo: "total", mensaje: "El total es cero." },
+      { codigo: "fecha", mensaje: "Falta la fecha de emisión." },
+      { codigo: "datos-faltantes", mensaje: "Falta o no es válido: tipo de comprobante." },
+      { codigo: "version-qr", mensaje: "Versión de QR desconocida (2)." },
+    ]);
+  });
+  it("la fecha inválida y la futura", () => {
+    expect(motivosDeLectura(valido({ fecha: "31/02/2026" }), HOY).map((m) => [m.codigo, m.mensaje])).toEqual([["fecha", "La fecha de emisión no es válida."]]);
+    expect(motivosDeLectura(valido({ fecha: "2026-12-01" }), HOY).map((m) => [m.codigo, m.mensaje])).toEqual([["fecha-futura", "La fecha de emisión es futura."]]);
+  });
+  it("motivosRevisar es lo mismo, solo con las frases", () => {
+    const c = valido({ cuit: "1", importe: -5 });
+    expect(motivosRevisar(c, HOY)).toEqual(motivosDeLectura(c, HOY).map((m) => m.mensaje));
   });
 });
 

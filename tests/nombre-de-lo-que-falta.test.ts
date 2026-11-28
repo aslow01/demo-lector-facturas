@@ -7,7 +7,7 @@ import { conciliar, resumenConciliacion, type ResumenConciliacion } from "../src
 import { agregarFila, crearFila, siguienteId, type Fila } from "../src/planilla.ts";
 import { anuncioConciliacion, metaResultado, protagonista } from "../src/vista.ts";
 
-const HOY = new Date(2026, 10, 17);
+const HOY = new Date(2026, 10, 17, 12);
 const CUIT = "30990000014";
 
 const FACTURA = { tipoCmp: 1 };

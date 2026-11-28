@@ -6,7 +6,7 @@ import { leerRegistro } from "../src/conciliacion.ts";
 import { crearFila, duplicadas, estadoFila, type Fila } from "../src/planilla.ts";
 import { ErrorQr, leerUrlQr } from "../src/qr-arca.ts";
 
-const HOY = new Date(2026, 10, 17);
+const HOY = new Date(2026, 10, 17, 12);
 
 function cargar(): Fila[] {
   return generarEjemplos(HOY).map((e, i) => {
@@ -93,7 +93,7 @@ describe("ejemplos ficticios", () => {
   });
 
   it("la fecha futura sigue siendo futura sea cual sea el día en que se genere", () => {
-    const hoy = new Date(2030, 0, 31);
+    const hoy = new Date(2030, 0, 31, 12);
     const futura = generarEjemplos(hoy).filter((e) => e.url !== null).map((e) => leerUrlQr(e.url as string)).filter((r) => !(r instanceof Error));
     expect(futura.some((c) => !(c instanceof Error) && estadoDe(c, hoy).motivos.some((m) => m.includes("futura")))).toBe(true);
   });

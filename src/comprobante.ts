@@ -221,11 +221,14 @@ export function normalizarFecha(texto: string): string | null {
  * Importe escrito a mano en formato argentino: `1.234,56` (coma decimal, puntos de miles).
  * Sin coma, un punto seguido de tres dígitos se toma como separador de miles (`1.234` = 1234);
  * en otro caso el punto es decimal (`12.5`).
+ * Una coma seguida de tres dígitos que terminan en cero (`1,500`, `10,000`) es ambigua: puede ser el miles de un archivo estadounidense o
+ * tres decimales, y leerla como 1,5 o 10 equivocaría el importe por mil. No se adivina: devuelve `null`.
  */
 export function parsearImporteTexto(texto: string): number | null {
   let t = texto.trim().replace(/\s/g, "");
   if (t === "") return null;
   if (t.includes(",")) {
+    if (tieneTresDecimalesAmbiguos(t, ",")) return null;
     t = t.replace(/\./g, "").replace(",", ".");
   } else if (/^-?\d{1,3}(\.\d{3})+$/.test(t)) {
     t = t.replace(/\./g, "");
@@ -233,6 +236,16 @@ export function parsearImporteTexto(texto: string): number | null {
   if (!/^-?\d+(\.\d+)?$/.test(t)) return null;
   const n = Number(t);
   return Number.isFinite(n) ? n : null;
+}
+
+/**
+ * `true` si lo que sigue al último `separador` son tres dígitos y el último es cero (`1,500`, `10,000`): leído como decimal pasaría por un
+ * importe válido de 2 decimales (1,5 o 10) y no se sabe si es el miles de un archivo estadounidense. Con otro último dígito (`1,234`) no hace
+ * falta: tres decimales ya se rechazan por «más de 2 decimales».
+ */
+export function tieneTresDecimalesAmbiguos(texto: string, separador: string): boolean {
+  const i = texto.lastIndexOf(separador);
+  return i >= 0 && /^\d\d0$/.test(texto.slice(i + 1));
 }
 
 // ---------------------------------------------------------------- Límites de los importes
@@ -290,38 +303,74 @@ export function claveDuplicado(c: Pick<Comprobante, "cuit" | "tipoCmp" | "ptoVta
   return `${c.cuit}|${c.tipoCmp}|${c.ptoVta}|${c.nroCmp}`;
 }
 
-function fechaLocalIso(d: Date): string {
-  const mm = String(d.getMonth() + 1).padStart(2, "0");
-  const dd = String(d.getDate()).padStart(2, "0");
-  return `${String(d.getFullYear()).padStart(4, "0")}-${mm}-${dd}`;
+const FORMATO_DIA_ARGENTINA = new Intl.DateTimeFormat("en-CA", {
+  timeZone: "America/Argentina/Buenos_Aires",
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+});
+
+/**
+ * `AAAA-MM-DD` del día de `d` en Argentina. Las fechas de los comprobantes son de Argentina: «hoy» no puede ser el día del
+ * navegador, porque quien trabaja desde un huso más adelantado vería «fecha futura» en una factura emitida hoy, de noche, allá.
+ */
+export function fechaArgentinaIso(d: Date): string {
+  return FORMATO_DIA_ARGENTINA.format(d);
 }
 
-/** Datos dudosos del comprobante, en palabras. Vacío si no hay nada que revisar. */
-export function motivosRevisar(c: Comprobante, hoy: Date = new Date()): string[] {
-  const motivos: string[] = [];
+/** Qué dato dudoso es. Los tres primeros los comparte con el control del comprobante (`control.ts`), que los dice con su gravedad. */
+export type CodigoMotivo = "cuit-emisor" | "fecha" | "fecha-futura" | "total" | "datos-faltantes" | "version-qr";
 
-  if (c.cuit === "") motivos.push("Falta el CUIT del emisor.");
-  else if (c.cuit.length !== 11) motivos.push("El CUIT del emisor no tiene 11 dígitos.");
-  else if (!cuitValido(c.cuit)) motivos.push("El CUIT del emisor tiene el dígito verificador inválido.");
+export interface MotivoLectura<C extends CodigoMotivo = CodigoMotivo> {
+  codigo: C;
+  /** Frase completa que dice qué mirar, en español neutro. */
+  mensaje: string;
+}
 
-  if (c.importe === null) motivos.push("El total falta o no es un número.");
-  else if (c.importe === 0) motivos.push("El total es cero.");
-  else if (c.importe < 0) motivos.push("El total es negativo.");
+/** El CUIT del emisor, si no sirve. Lo usan la lectura y el control del comprobante: una sola frase para los dos. */
+export function motivoCuitEmisor(c: Pick<Comprobante, "cuit">): MotivoLectura<"cuit-emisor"> | null {
+  if (c.cuit === "") return { codigo: "cuit-emisor", mensaje: "Falta el CUIT del emisor." };
+  if (c.cuit.length !== 11) return { codigo: "cuit-emisor", mensaje: "El CUIT del emisor no tiene 11 dígitos." };
+  if (!cuitValido(c.cuit)) return { codigo: "cuit-emisor", mensaje: "El CUIT del emisor tiene el dígito verificador inválido." };
+  return null;
+}
 
+/** La fecha de emisión, si falta, no existe o es posterior a hoy en Argentina. Compartida con el control del comprobante. */
+export function motivoFecha(c: Pick<Comprobante, "fecha">, hoy: Date): MotivoLectura<"fecha" | "fecha-futura"> | null {
+  if (c.fecha === "") return { codigo: "fecha", mensaje: "Falta la fecha de emisión." };
   const fecha = normalizarFecha(c.fecha);
-  if (c.fecha === "") motivos.push("Falta la fecha.");
-  else if (fecha === null) motivos.push("La fecha no es válida.");
-  else if (fecha > fechaLocalIso(hoy)) motivos.push("La fecha es futura.");
+  if (fecha === null) return { codigo: "fecha", mensaje: "La fecha de emisión no es válida." };
+  if (fecha > fechaArgentinaIso(hoy)) return { codigo: "fecha-futura", mensaje: "La fecha de emisión es futura." };
+  return null;
+}
+
+/** Datos dudosos del comprobante, cada uno con su código. Vacío si no hay nada que revisar. */
+export function motivosDeLectura(c: Comprobante, hoy: Date = new Date()): MotivoLectura[] {
+  const motivos: MotivoLectura[] = [];
+  const cuit = motivoCuitEmisor(c);
+  if (cuit !== null) motivos.push(cuit);
+
+  if (c.importe === null) motivos.push({ codigo: "total", mensaje: "El total falta o no es un número." });
+  else if (c.importe === 0) motivos.push({ codigo: "total", mensaje: "El total es cero." });
+  else if (c.importe < 0) motivos.push({ codigo: "total", mensaje: "El total es negativo." });
+
+  const fecha = motivoFecha(c, hoy);
+  if (fecha !== null) motivos.push(fecha);
 
   const faltan: string[] = [];
   if (c.tipoCmp === null) faltan.push("tipo de comprobante");
   if (c.ptoVta === null) faltan.push("punto de venta");
   if (c.nroCmp === null) faltan.push("número");
-  if (faltan.length > 0) motivos.push(`Falta o no es válido: ${faltan.join(", ")}.`);
+  if (faltan.length > 0) motivos.push({ codigo: "datos-faltantes", mensaje: `Falta o no es válido: ${faltan.join(", ")}.` });
 
-  if (c.ver !== null && c.ver !== 1) motivos.push(`Versión de QR desconocida (${c.ver}).`);
+  if (c.ver !== null && c.ver !== 1) motivos.push({ codigo: "version-qr", mensaje: `Versión de QR desconocida (${c.ver}).` });
 
   return motivos;
+}
+
+/** Datos dudosos del comprobante, en palabras. Vacío si no hay nada que revisar. */
+export function motivosRevisar(c: Comprobante, hoy: Date = new Date()): string[] {
+  return motivosDeLectura(c, hoy).map((m) => m.mensaje);
 }
 
 /** Estado de un comprobante leído del QR (`null` = no se encontró QR). */

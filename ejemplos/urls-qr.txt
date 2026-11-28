@@ -1,5 +1,5 @@
 # Direcciones de QR de facturas ficticias (empresas, CUIT, importes y CAE inventados).
-# Generado el 2026-11-18 con `npm run ejemplos`. Una dirección por línea; las que empiezan con # son comentarios.
+# Generado el 2026-11-28 con `npm run ejemplos`. Una dirección por línea; las que empiezan con # son comentarios.
 
 # ejemplo-01.png: Factura A normal: ya cargada en el sistema.
 # Factura A 3-1245, CUIT 30-99000001-4, PES 118.470,50
@@ -39,7 +39,47 @@ https://www.afip.gob.ar/fe/qr/?p=eyJ2ZXIiOjEsIm1vbmVkYSI6IlBFUyIsImN0eiI6MSwidGl
 
 # ejemplo-10.png: Fecha futura.
 # Factura A 2-95, CUIT 33-99000201-6, PES 22.800,00
-https://www.afip.gob.ar/fe/qr/?p=eyJ2ZXIiOjEsIm1vbmVkYSI6IlBFUyIsImN0eiI6MSwidGlwb0NvZEF1dCI6IkUiLCJjb2RBdXQiOjcwMDAwMDAwMDcxMjcxLCJmZWNoYSI6IjIwMjYtMTItMTciLCJjdWl0IjozMzk5MDAwMjAxNiwicHRvVnRhIjoyLCJ0aXBvQ21wIjoxLCJucm9DbXAiOjk1LCJpbXBvcnRlIjoyMjgwMH0=
+https://www.afip.gob.ar/fe/qr/?p=eyJ2ZXIiOjEsIm1vbmVkYSI6IlBFUyIsImN0eiI6MSwidGlwb0NvZEF1dCI6IkUiLCJjb2RBdXQiOjcwMDAwMDAwMDcxMjcxLCJmZWNoYSI6IjIwMjYtMTItMjgiLCJjdWl0IjozMzk5MDAwMjAxNiwicHRvVnRhIjoyLCJ0aXBvQ21wIjoxLCJucm9DbXAiOjk1LCJpbXBvcnRlIjoyMjgwMH0=
 
 # ejemplo-11.png: Imagen sin QR legible: se puede completar a mano.
 # (sin dirección: representa una imagen sin QR legible)
+
+# ejemplo-12.png: En orden: el neto y el IVA suman el total, el CAE vence después de la emisión y el receptor tiene CUIT válido.
+# Factura A 3-1270, CUIT 30-99000001-4, PES 100.000,00
+https://www.afip.gob.ar/fe/qr/?p=eyJ2ZXIiOjEsIm1vbmVkYSI6IlBFUyIsImN0eiI6MSwidGlwb0NvZEF1dCI6IkUiLCJjb2RBdXQiOjcwMDAwMDAwNzk5ODE5LCJmZWNoYSI6IjIwMjYtMTAtMTkiLCJjdWl0IjozMDk5MDAwMDAxNCwicHRvVnRhIjozLCJ0aXBvQ21wIjoxLCJucm9DbXAiOjEyNzAsImltcG9ydGUiOjEwMDAwMCwidGlwb0RvY1JlYyI6ODAsIm5yb0RvY1JlYyI6MzA5OTAwMDMwMTN9
+
+# ejemplo-13.png: En orden, con otros conceptos: neto, IVA y otros suman el total.
+# Factura A 5-2101, CUIT 30-99000101-0, PES 61.750,00
+https://www.afip.gob.ar/fe/qr/?p=eyJ2ZXIiOjEsIm1vbmVkYSI6IlBFUyIsImN0eiI6MSwidGlwb0NvZEF1dCI6IkUiLCJjb2RBdXQiOjcwMDAwMDAwODA3NzM4LCJmZWNoYSI6IjIwMjYtMTAtMjAiLCJjdWl0IjozMDk5MDAwMTAxMCwicHRvVnRhIjo1LCJ0aXBvQ21wIjoxLCJucm9DbXAiOjIxMDEsImltcG9ydGUiOjYxNzUwLCJ0aXBvRG9jUmVjIjo4MCwibnJvRG9jUmVjIjozMDk5MDAwMzAxM30=
+
+# ejemplo-14.png: Un centavo de diferencia por redondeo: se perdona, la fila queda sin observaciones.
+# Factura A 7-410, CUIT 33-99000201-6, PES 15.000,01
+https://www.afip.gob.ar/fe/qr/?p=eyJ2ZXIiOjEsIm1vbmVkYSI6IlBFUyIsImN0eiI6MSwidGlwb0NvZEF1dCI6IkUiLCJjb2RBdXQiOjcwMDAwMDAwODE1NjU3LCJmZWNoYSI6IjIwMjYtMTAtMjEiLCJjdWl0IjozMzk5MDAwMjAxNiwicHRvVnRhIjo3LCJ0aXBvQ21wIjoxLCJucm9DbXAiOjQxMCwiaW1wb3J0ZSI6MTUwMDAuMDEsInRpcG9Eb2NSZWMiOjgwLCJucm9Eb2NSZWMiOjMwOTkwMDAzMDEzfQ==
+
+# ejemplo-15.png: El total no cierra: el neto y el IVA suman 24.200,00 y la factura dice 24.200,03.
+# Factura A 3-1275, CUIT 30-99000001-4, PES 24.200,03
+https://www.afip.gob.ar/fe/qr/?p=eyJ2ZXIiOjEsIm1vbmVkYSI6IlBFUyIsImN0eiI6MSwidGlwb0NvZEF1dCI6IkUiLCJjb2RBdXQiOjcwMDAwMDAwODIzNTc2LCJmZWNoYSI6IjIwMjYtMTAtMjIiLCJjdWl0IjozMDk5MDAwMDAxNCwicHRvVnRhIjozLCJ0aXBvQ21wIjoxLCJucm9DbXAiOjEyNzUsImltcG9ydGUiOjI0MjAwLjAzLCJ0aXBvRG9jUmVjIjo4MCwibnJvRG9jUmVjIjozMDk5MDAwMzAxM30=
+
+# ejemplo-16.png: Factura C con IVA discriminado: una C no lo discrimina, así que está mal la letra o el importe.
+# Factura C 2-330, CUIT 30-99000101-0, PES 21.780,00
+https://www.afip.gob.ar/fe/qr/?p=eyJ2ZXIiOjEsIm1vbmVkYSI6IlBFUyIsImN0eiI6MSwidGlwb0NvZEF1dCI6IkUiLCJjb2RBdXQiOjcwMDAwMDAwODMxNDk1LCJmZWNoYSI6IjIwMjYtMTAtMjIiLCJjdWl0IjozMDk5MDAwMTAxMCwicHRvVnRhIjoyLCJ0aXBvQ21wIjoxMSwibnJvQ21wIjozMzAsImltcG9ydGUiOjIxNzgwfQ==
+
+# ejemplo-17.png: Factura C en orden: sin IVA discriminado, el neto es el total.
+# Factura C 1-58, CUIT 33-99000201-6, PES 12.500,00
+https://www.afip.gob.ar/fe/qr/?p=eyJ2ZXIiOjEsIm1vbmVkYSI6IlBFUyIsImN0eiI6MSwidGlwb0NvZEF1dCI6IkUiLCJjb2RBdXQiOjcwMDAwMDAwODM5NDE0LCJmZWNoYSI6IjIwMjYtMTAtMjMiLCJjdWl0IjozMzk5MDAwMjAxNiwicHRvVnRhIjoxLCJ0aXBvQ21wIjoxMSwibnJvQ21wIjo1OCwiaW1wb3J0ZSI6MTI1MDB9
+
+# ejemplo-18.png: CAE vencido antes de la emisión: la factura es del 24/10/2026 y el CAE vence el 14/10/2026.
+# Factura A 3-1281, CUIT 30-99000001-4, PES 36.300,00
+https://www.afip.gob.ar/fe/qr/?p=eyJ2ZXIiOjEsIm1vbmVkYSI6IlBFUyIsImN0eiI6MSwidGlwb0NvZEF1dCI6IkUiLCJjb2RBdXQiOjcwMDAwMDAwODQ3MzMzLCJmZWNoYSI6IjIwMjYtMTAtMjQiLCJjdWl0IjozMDk5MDAwMDAxNCwicHRvVnRhIjozLCJ0aXBvQ21wIjoxLCJucm9DbXAiOjEyODEsImltcG9ydGUiOjM2MzAwLCJ0aXBvRG9jUmVjIjo4MCwibnJvRG9jUmVjIjozMDk5MDAwMzAxM30=
+
+# ejemplo-19.png: CUIT del receptor con dígito verificador inválido (el resto de la factura está en orden).
+# Factura A 5-2110, CUIT 30-99000101-0, PES 48.400,00
+https://www.afip.gob.ar/fe/qr/?p=eyJ2ZXIiOjEsIm1vbmVkYSI6IlBFUyIsImN0eiI6MSwidGlwb0NvZEF1dCI6IkUiLCJjb2RBdXQiOjcwMDAwMDAwODU1MjUyLCJmZWNoYSI6IjIwMjYtMTAtMjYiLCJjdWl0IjozMDk5MDAwMTAxMCwicHRvVnRhIjo1LCJ0aXBvQ21wIjoxLCJucm9DbXAiOjIxMTAsImltcG9ydGUiOjQ4NDAwLCJ0aXBvRG9jUmVjIjo4MCwibnJvRG9jUmVjIjozMDk5MDAwMzAxNH0=
+
+# ejemplo-20.png: Factura A a un receptor identificado con DNI: conviene revisar la letra o el receptor.
+# Factura A 7-415, CUIT 33-99000201-6, PES 9.680,00
+https://www.afip.gob.ar/fe/qr/?p=eyJ2ZXIiOjEsIm1vbmVkYSI6IlBFUyIsImN0eiI6MSwidGlwb0NvZEF1dCI6IkUiLCJjb2RBdXQiOjcwMDAwMDAwODYzMTcxLCJmZWNoYSI6IjIwMjYtMTAtMjciLCJjdWl0IjozMzk5MDAwMjAxNiwicHRvVnRhIjo3LCJ0aXBvQ21wIjoxLCJucm9DbXAiOjQxNSwiaW1wb3J0ZSI6OTY4MCwidGlwb0RvY1JlYyI6OTYsIm5yb0RvY1JlYyI6MjAwMDAwMDF9
+
+# ejemplo-21.png: Misma factura que la fila 12, recibida dos veces: duplicado de la planilla.
+# Factura A 3-1270, CUIT 30-99000001-4, PES 100.000,00
+https://www.afip.gob.ar/fe/qr/?p=eyJ2ZXIiOjEsIm1vbmVkYSI6IlBFUyIsImN0eiI6MSwidGlwb0NvZEF1dCI6IkUiLCJjb2RBdXQiOjcwMDAwMDAwNzk5ODE5LCJmZWNoYSI6IjIwMjYtMTAtMTkiLCJjdWl0IjozMDk5MDAwMDAxNCwicHRvVnRhIjozLCJ0aXBvQ21wIjoxLCJucm9DbXAiOjEyNzAsImltcG9ydGUiOjEwMDAwMCwidGlwb0RvY1JlYyI6ODAsIm5yb0RvY1JlYyI6MzA5OTAwMDMwMTN9

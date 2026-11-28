@@ -6,3 +6,6 @@ dist/
 .DS_Store
 # Nunca facturas reales
 facturas-reales/
+
+# Términos prohibidos (nombres de terceros): solo en local, nunca versionado (ver scripts/exportar-publico.mjs)
+scripts/prohibidos.local.json

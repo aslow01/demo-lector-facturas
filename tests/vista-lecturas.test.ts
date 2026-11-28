@@ -28,7 +28,7 @@ function planilla(...datos: Array<Partial<Comprobante> | null>): Fila[] {
 }
 
 function resumenDe(filas: Fila[], registros: Registro[] = []) {
-  return resumenConciliacion(filas, conciliar(filas, registros, new Date(2026, 10, 17)));
+  return resumenConciliacion(filas, conciliar(filas, registros, new Date(2026, 10, 17, 12)));
 }
 
 const REGISTRO_1: Registro = { cuit: CUIT, tipoCmp: 1, ptoVta: 1, nroCmp: 1, importe: 100, linea: 2 };

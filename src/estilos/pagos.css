@@ -1,0 +1,491 @@
+/* Pestaña «Pagos»: barra de pestañas, panel, y las ventanas del conciliador de pagos (extracto, resultado, excepciones, facturas y pagos).
+   Reusa el lenguaje de las demás ventanas: marco, barra de título y de herramientas, zona de carga, protagonista, «Requieren atención»
+   y bloques de detalle. Aquí solo va lo propio: las pestañas, las dos tablas y la bandeja de excepciones.
+   Una pieza llama la atención (la cifra «Falta pagar»); el resto es calmo: un solo color por fila, en la franja izquierda. */
+
+/* ---------- Pestañas (módulos de la página) ---------- */
+.pestanas-barra {
+  border-bottom: 1px solid var(--c-borde-fuerte);
+}
+.pestanas {
+  display: flex;
+  gap: var(--e-1);
+  margin-bottom: -1px; /* la pestaña activa tapa el filo de la barra: parece unida al panel */
+}
+.pestanas [role="tab"] {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--e-2);
+  min-height: 2.75rem;
+  padding: 0 var(--e-4);
+  border: 1px solid transparent;
+  border-bottom: 0;
+  border-radius: var(--r-2) var(--r-2) 0 0;
+  background: none;
+  color: var(--c-texto-2);
+  font-weight: 600;
+  line-height: 1.2;
+  cursor: pointer;
+  transition: background-color var(--m-rapido) var(--m-curva), color var(--m-rapido) var(--m-curva);
+}
+.pestanas [role="tab"] .icono {
+  width: 1.125rem;
+  height: 1.125rem;
+}
+@media (hover: hover) {
+  .pestanas [role="tab"][aria-selected="false"]:hover {
+    background: var(--c-ventana-control-hover);
+    color: var(--c-texto);
+  }
+}
+.pestanas [role="tab"][aria-selected="true"] {
+  border-color: var(--c-borde-fuerte);
+  background: var(--c-escritorio);
+  color: var(--c-texto);
+  box-shadow: inset 0 3px 0 var(--c-acento);
+}
+.pestanas [role="tab"][aria-selected="true"] .icono {
+  color: var(--c-acento);
+}
+.pestanas [role="tab"]:focus-visible {
+  outline: 2px solid var(--c-foco);
+  outline-offset: -2px;
+}
+@media (max-width: 39.99rem) {
+  .pestanas [role="tab"] {
+    flex: 1;
+  }
+}
+
+/* ---------- Panel: lo que antes colgaba directo de <main> ---------- */
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--e-4);
+  min-width: 0;
+}
+@media (min-width: 40rem) {
+  .panel {
+    gap: var(--e-5);
+  }
+}
+.encabezado-pagos {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+/* Hasta que se carga un extracto, las ventanas de lo que sale de él no existen (como la planilla sin comprobantes). */
+#panel-pagos:not([data-con-extracto]) .ventana-con-extracto {
+  display: none;
+}
+
+/* Las dos tablas de pagos no llevan relleno: la fila toca los bordes y la franja queda pegada al marco (como la planilla). */
+.ventana-pagos .ventana-interior {
+  gap: 0;
+  padding: 0;
+}
+.ventana-pagos {
+  --margen-cabeza: 0rem;
+}
+
+/* ---------- Filtros de tres opciones: en angosto, una sola fila (la grilla de dos columnas dejaría un hueco) ---------- */
+@container ventana (max-width: 39.99rem) {
+  .filtros-de-tres {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+/* ---------- Tablas ---------- */
+.tabla-pagos {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: var(--t-tabla);
+  line-height: 1.4;
+}
+.tabla-pagos th {
+  height: 2.5rem;
+  padding: var(--e-2) var(--e-3);
+  background: var(--c-superficie-2);
+  border-bottom: 1px solid var(--c-borde);
+  color: var(--c-texto-3);
+  font-size: var(--t-rotulo);
+  font-weight: 600;
+  line-height: 1.3;
+  letter-spacing: 0.06em;
+  text-align: left;
+  text-transform: uppercase;
+  vertical-align: middle;
+}
+.tabla-pagos td {
+  padding: var(--e-3);
+  border-bottom: 1px solid var(--c-borde);
+  vertical-align: top;
+}
+.tabla-pagos tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+/* Anchos: la columna de texto (la factura, el motivo) toma lo que sobra. */
+.tabla-facturas-pagos .p-estado {
+  width: 9.5rem;
+}
+.tabla-facturas-pagos .p-fecha {
+  width: 6.25rem;
+}
+.tabla-facturas-pagos .p-importe {
+  width: 8.25rem;
+}
+.tabla-facturas-pagos .p-dias {
+  width: 4rem;
+}
+.tabla-lista-pagos .p-linea {
+  width: 3.75rem;
+}
+.tabla-lista-pagos .p-estado {
+  width: 12.5rem;
+}
+.tabla-lista-pagos .p-pago {
+  width: 15rem;
+}
+.tabla-lista-pagos .p-importe {
+  width: 8.5rem;
+}
+.tabla-pagos th.p-importe,
+.tabla-pagos td.p-importe,
+.tabla-pagos th.p-dias,
+.tabla-pagos td.p-dias {
+  text-align: right;
+}
+
+.tabla-pagos td.p-importe {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums lining-nums;
+  white-space: nowrap;
+}
+.tabla-pagos td.p-pagado,
+.tabla-pagos td.p-saldo {
+  font-weight: 400;
+}
+.tabla-pagos td.p-saldo {
+  font-weight: 600;
+}
+.tabla-pagos td.p-fecha,
+.tabla-pagos td.p-dias,
+.tabla-pagos td.p-linea {
+  color: var(--c-texto-2);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.tabla-pagos td.p-linea {
+  color: var(--c-texto-3);
+}
+.tabla-pagos .linea-1 {
+  display: block;
+  font-weight: 600;
+}
+.tabla-pagos .linea-2 {
+  display: block;
+  color: var(--c-texto-2);
+  font-family: var(--t-mono);
+  font-size: var(--t-chico);
+}
+.tabla-pagos .codigo {
+  white-space: nowrap;
+}
+/* Lo que traía la celda de CUIT cuando no servía puede ser cualquier texto largo: ese sí corta donde haga falta. */
+.tabla-pagos .codigo-ilegible {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.tabla-pagos .detalle-pago {
+  display: block;
+  margin-top: var(--e-1);
+  color: var(--c-texto-2);
+  font-size: var(--t-chico);
+  line-height: 1.4;
+}
+/* Los importes y las referencias no se parten en medio de una cifra; el texto libre sí puede cortar donde haga falta. */
+.tabla-pagos .detalle-pago,
+.tabla-pagos .pago-porque,
+.tabla-pagos .pago-aviso,
+.tabla-pagos .pago-factura {
+  overflow-wrap: anywhere;
+}
+.tabla-pagos .etiqueta-estado + .etiqueta-estado {
+  margin-top: var(--e-1);
+}
+
+/* Qué hizo el cruce con un pago: las facturas aplicadas en negrita, el porqué en suave y los avisos en el tono de aviso. */
+.pago-factura {
+  display: block;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.pago-porque {
+  display: block;
+  margin-top: var(--e-1);
+  color: var(--c-texto-2);
+  font-size: var(--t-chico);
+  line-height: 1.45;
+}
+.pago-factura + .pago-porque {
+  margin-top: 0.125rem;
+}
+.pago-aviso {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--e-2);
+  margin-top: var(--e-1);
+  color: var(--c-revisar-t);
+  font-size: var(--t-chico);
+  line-height: 1.4;
+}
+.pago-aviso .icono {
+  width: 1rem;
+  height: 1rem;
+  margin-top: 0.0625rem;
+}
+
+.tabla-pagos .fila-vacia td {
+  padding: var(--e-4);
+  color: var(--c-texto-2);
+}
+
+/* Estado visual de la fila: una sola señal de color, la franja izquierda. */
+.tabla-pagos tbody tr {
+  --franja: transparent;
+}
+.tabla-facturas-pagos tr[data-estado="pagada"] {
+  --franja: var(--c-ok-r);
+}
+.tabla-facturas-pagos tr[data-estado="parcial"] {
+  --franja: var(--c-revisar-r);
+}
+.tabla-facturas-pagos tr[data-estado="impaga"] {
+  --franja: var(--c-pendiente-r);
+}
+.tabla-lista-pagos tr[data-estado="emparejado"] {
+  --franja: var(--c-ok-r);
+}
+.tabla-lista-pagos tr[data-estado="revisar"],
+.tabla-lista-pagos tr[data-estado="duplicado"] {
+  --franja: var(--c-revisar-r);
+}
+.tabla-lista-pagos tr[data-estado="sin-factura"] {
+  --franja: var(--c-diferencia-r);
+}
+.tabla-pagos tbody tr > td:first-child {
+  box-shadow: inset 4px 0 0 var(--franja);
+}
+/* El pago duplicado no cuenta: su importe se tacha como el de una factura duplicada en la planilla. */
+.tabla-lista-pagos tr[data-estado="duplicado"] .p-importe {
+  text-decoration: line-through;
+  color: var(--c-texto-2);
+}
+@media (hover: hover) {
+  .tabla-pagos tbody tr:hover > td {
+    background: var(--c-superficie-2);
+  }
+}
+.tabla-pagos tbody tr:focus {
+  outline: none;
+}
+/* El foco de una fila se ve con contorno (el tinte solo lo refuerza: contra la superficie no alcanza el contraste de 3:1). */
+.tabla-pagos tbody tr:focus-visible {
+  outline: 2px solid var(--c-foco);
+  outline-offset: -2px;
+}
+.tabla-pagos tbody tr:focus-visible > td {
+  background: var(--c-acento-suave);
+}
+
+/* «Mostrar las N restantes»: cierra la tabla cuando se recortó. */
+.mas-filas {
+  display: flex;
+  justify-content: center;
+  padding: var(--e-3) var(--e-4);
+  border-top: 1px solid var(--c-borde);
+}
+
+/* ---------- Excepciones ---------- */
+.detalle-bloque li .exc-linea,
+.detalle-bloque li .exc-motivo,
+.detalle-bloque li .exc-candidatas {
+  display: block;
+  overflow-wrap: anywhere;
+}
+.detalle-bloque li .exc-linea {
+  font-weight: 600;
+}
+.detalle-bloque li .exc-motivo,
+.detalle-bloque li .exc-candidatas {
+  margin-top: 0.125rem;
+  color: var(--c-texto-2);
+  font-size: var(--t-chico);
+  line-height: 1.45;
+}
+#interior-excepciones-pagos .atencion-nada {
+  color: var(--c-texto-2);
+}
+
+/* ---------- Disposición en lista: contenedor «interior» de menos de 62 rem (la misma tabla, redibujada con CSS) ----------
+   Facturas:  [Estado + antigüedad]                    Pagos:  [Resultado]                $ 118.470,50
+              Factura A 0003-00001245                          Línea 3
+              30-99000001-4 · detalle                          fecha / CUIT / referencia
+              30-99000001-4 · detalle                          Factura aplicada y el porqué
+              FECHA     IMPORTE    PAGADO
+              SALDO     DÍAS                                                                              */
+@container interior (max-width: 61.99rem) {
+  .tabla-envoltorio {
+    overflow: visible;
+  }
+  .tabla-pagos,
+  .tabla-pagos tbody {
+    display: block;
+  }
+  .tabla-pagos thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+  .tabla-pagos tbody tr {
+    display: grid;
+    align-items: start;
+    column-gap: var(--e-3);
+    row-gap: var(--e-2);
+    padding: var(--e-3);
+    border-bottom: 1px solid var(--c-borde);
+    box-shadow: inset 4px 0 0 var(--franja);
+  }
+  .tabla-pagos tbody tr:last-child {
+    border-bottom: 0;
+  }
+  .tabla-pagos tbody tr > td,
+  .tabla-pagos tbody tr > td:first-child {
+    display: block;
+    width: auto; /* los anchos de columna son de la tabla; en lista manda la grilla */
+    padding: 0;
+    border: 0;
+    background: none;
+    box-shadow: none;
+  }
+  @media (hover: hover) {
+    .tabla-pagos tbody tr:hover > td {
+      background: none;
+    }
+    .tabla-pagos tbody tr:hover {
+      background: var(--c-superficie-2);
+    }
+  }
+  .tabla-pagos td.p-importe,
+  .tabla-pagos td.p-dias {
+    width: auto;
+    text-align: left;
+  }
+
+  /* Facturas: arriba el estado y la factura; abajo los cinco datos en una grilla que se acomoda al ancho. */
+  .tabla-facturas-pagos tbody tr {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    column-gap: var(--e-2);
+  }
+  .tabla-facturas-pagos .p-fecha,
+  .tabla-facturas-pagos .p-importe,
+  .tabla-facturas-pagos .p-dias {
+    font-size: var(--t-chico);
+  }
+  @container interior (min-width: 36rem) {
+    .tabla-facturas-pagos tbody tr {
+      grid-template-columns: repeat(auto-fill, minmax(6.5rem, 1fr));
+    }
+  }
+  .tabla-facturas-pagos .p-estado,
+  .tabla-facturas-pagos .p-factura {
+    grid-column: 1 / -1;
+  }
+  .tabla-facturas-pagos .p-fecha,
+  .tabla-facturas-pagos .p-importe,
+  .tabla-facturas-pagos .p-dias {
+    min-width: 0;
+  }
+  .tabla-facturas-pagos td[data-etiqueta]:not(.p-estado):not(.p-factura)::before {
+    content: attr(data-etiqueta);
+    display: block;
+    color: var(--c-texto-3);
+    font-size: var(--t-rotulo);
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    line-height: 1.3;
+    text-transform: uppercase;
+  }
+  .tabla-facturas-pagos .p-estado {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--e-1) var(--e-2);
+  }
+  .tabla-pagos .etiqueta-estado + .etiqueta-estado {
+    margin-top: 0;
+  }
+  .tabla-facturas-pagos .fila-vacia {
+    display: block;
+  }
+
+  /* Pagos: arriba el resultado y el importe a la derecha; debajo «Línea 3», el pago y el motivo a todo el ancho. */
+  .tabla-lista-pagos tbody tr {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+  .tabla-lista-pagos .p-estado {
+    grid-column: 1;
+    grid-row: 1;
+    align-self: center;
+    justify-self: start;
+  }
+  .tabla-lista-pagos .p-importe {
+    grid-column: 2;
+    grid-row: 1;
+    align-self: center;
+    text-align: right;
+  }
+  .tabla-lista-pagos .p-linea {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    font-size: var(--t-chico);
+  }
+  .tabla-lista-pagos .p-linea::before {
+    content: "Línea ";
+  }
+  .tabla-lista-pagos .p-pago,
+  .tabla-lista-pagos .p-motivo {
+    grid-column: 1 / -1;
+  }
+  .tabla-lista-pagos .p-pago {
+    grid-row: 3;
+  }
+  .tabla-lista-pagos .p-motivo {
+    grid-row: 4;
+  }
+  .tabla-lista-pagos .p-pago .linea-1,
+  .tabla-lista-pagos .p-pago .linea-2 {
+    display: inline;
+  }
+  .tabla-lista-pagos .p-pago .linea-1::after {
+    content: " · ";
+    font-weight: 400;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pestanas [role="tab"] {
+    transition: none;
+  }
+}
+
+@media print {
+  .pestanas-barra {
+    display: none;
+  }
+}

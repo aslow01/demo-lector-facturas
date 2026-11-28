@@ -13,7 +13,7 @@ import {
   type Fila,
 } from "../src/planilla.ts";
 
-const HOY = new Date(2026, 10, 17);
+const HOY = new Date(2026, 10, 17, 12);
 
 function dato(cambios: Partial<Comprobante> = {}): Comprobante {
   return {

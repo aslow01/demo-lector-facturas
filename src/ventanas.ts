@@ -3,6 +3,8 @@
 // accesibilidad y del orden de tabulación). La barra de título y la de estado no se pliegan: la de estado tiene las
 // regiones que anuncian los mensajes. No se recuerda entre visitas y la página nunca pliega nada por su cuenta.
 
+import { activarPanelDe } from "./pestanas.ts";
+
 /** Los ids de un `aria-controls` (separados por espacios), sin vacíos ni repetidos. */
 export function idsControlados(valor: string | null): string[] {
   return [...new Set((valor ?? "").split(/\s+/).filter((id) => id !== ""))];
@@ -30,12 +32,13 @@ export function plegarVentana(ventana: HTMLElement, plegada: boolean): void {
 }
 
 /**
- * Regla única de la navegación interna: si el destino está dentro de una ventana plegada, se la despliega primero.
- * Devuelve `true` si desplegó algo. El foco no se toca aquí: lo mueve quien navega.
+ * Regla única de la navegación interna: si el destino está en una pestaña que no se ve, se la abre; y si está dentro de una ventana
+ * plegada, se la despliega primero. Devuelve `true` si abrió o desplegó algo. El foco no se toca aquí: lo mueve quien navega.
  */
 export function desplegarSiHaceFalta(destino: Element): boolean {
+  const cambioDePestana = activarPanelDe(destino);
   const ventana = destino.closest<HTMLElement>(".ventana");
-  if (!ventana || !estaPlegada(ventana)) return false;
+  if (!ventana || !estaPlegada(ventana)) return cambioDePestana;
   plegarVentana(ventana, false);
   return true;
 }

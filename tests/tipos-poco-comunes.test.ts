@@ -6,7 +6,7 @@ import { conciliar, interpretarTipo, resumenConciliacion } from "../src/concilia
 import { agregarFila, crearFila, siguienteId, totalesPorMoneda, type Fila } from "../src/planilla.ts";
 import { anuncioConciliacion, protagonista } from "../src/vista.ts";
 
-const HOY = new Date(2026, 10, 17);
+const HOY = new Date(2026, 10, 17, 12);
 const CUIT = "30990000014";
 
 function planilla(...datos: Array<Partial<Comprobante>>): Fila[] {

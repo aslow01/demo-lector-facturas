@@ -6,7 +6,7 @@ import { conciliar, leerRegistro, resumenConciliacion, type LecturaRegistro, typ
 import { crearFila, type Fila } from "../src/planilla.ts";
 import { ErrorQr, armarUrlQr, leerUrlQr } from "../src/qr-arca.ts";
 
-const HOY = new Date(2026, 10, 17);
+const HOY = new Date(2026, 10, 17, 12);
 const CUIT = "30990000014";
 const BASE = { ver: 1, fecha: "2026-10-05", cuit: Number(CUIT), ptoVta: 3, tipoCmp: 1, nroCmp: 1245, importe: 1000, moneda: "PES" };
 

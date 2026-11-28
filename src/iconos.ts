@@ -6,6 +6,7 @@ export const ICONOS = [
   "check",
   "punto",
   "alerta",
+  "error",
   "distinto",
   "guion",
   "copias",
@@ -22,6 +23,8 @@ export const ICONOS = [
   "flecha-izq",
   "ubicacion",
   "reloj",
+  "pago",
+  "bandeja",
 ] as const;
 
 export type NombreIcono = (typeof ICONOS)[number];

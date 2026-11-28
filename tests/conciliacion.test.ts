@@ -29,7 +29,7 @@ import { CUIT_FICTICIOS, generarEjemplos, registroEjemplo } from "../src/ejemplo
 import { agregarFila, crearFila, siguienteId, type Fila } from "../src/planilla.ts";
 import { leerUrlQr } from "../src/qr-arca.ts";
 
-const HOY = new Date(2026, 10, 17);
+const HOY = new Date(2026, 10, 17, 12);
 const CUIT_A = "30990000014";
 const CUIT_B = "30990000200";
 

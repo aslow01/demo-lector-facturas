@@ -71,6 +71,14 @@ describe("importe en el registro", () => {
     expect(interpretarImporte("1e+23")).toBeNull();
     expect(interpretarImporte("1.234,56")).toBe(1234.56);
   });
+  it("coma seguida de exactamente tres dígitos es ambiguo (miles estadounidenses o tres decimales): no se adivina", () => {
+    for (const t of ["1,500", "10,000", "2,000", "0,500", "1.500,000", "$ 1,500"]) expect(interpretarImporte(t), t).toBeNull();
+    for (const t of ["1,50", "1,5", "1.500,00", "1500", "1.500", "1,500.00", "10,000.50"]) expect(interpretarImporte(t), t).not.toBeNull();
+    expect(interpretarImporte("1,500.00")).toBe(1500);
+  });
+  it("lo mismo al escribir el importe a mano en la planilla", () => {
+    expect(editarFila(filaVacia(), 1, "importe", "1,500")).toBeInstanceOf(Error);
+  });
   it("las líneas con importe fuera de rango se descartan y se cuentan aparte", () => {
     const r = leerRegistro(`cuit;tipo;pv;nro;importe
 ${CUIT};1;1;1;100,50

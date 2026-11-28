@@ -30,6 +30,7 @@ import {
   conciliar,
   filasCargadasDosVeces,
   partesClaveRepetida,
+  describirDesgloseIlegible,
   describirEncabezadosDuplicados,
   describirImportesExcesivos,
   describirLineasInvalidas,
@@ -37,7 +38,6 @@ import {
   itemsAtencion,
   leerRegistro,
   lineaMenor,
-  mostrarConFiltro,
   resumenConciliacion,
   type Conciliacion,
   type FiltroFilas,
@@ -46,13 +46,27 @@ import {
 import { aCsv } from "./csv.ts";
 import { formatearCuit } from "./cuit.ts";
 import { confirmacionPermitida } from "./confirmacion.ts";
-import { esFilaDeEjemplo, generarEjemplos, registroEjemplo } from "./ejemplos.ts";
+import { crearEtiqueta, hijo, marcaSinDato, pintarMensaje, textoDeAccion, type TonoMensaje } from "./dom.ts";
+import {
+  CAMPOS_DESGLOSE,
+  conDesgloseDelRegistro,
+  editarDesglose,
+  hayDesglose,
+  origenDesglose,
+  textoDeDesglose,
+  textoOrigenDesglose,
+  type CampoDesglose,
+} from "./desglose.ts";
+import { esFilaDeEjemplo, generarEjemplosCompletos, registroEjemploCompleto } from "./ejemplos.ts";
+import { extractoEjemplo } from "./ejemplos-pagos.ts";
 import { cerrarGlobo, iniciarGuia } from "./guia.ts";
 import { icono } from "./iconos.ts";
 import { ErrorLectura, cancelarLecturas, textosQrDeArchivo } from "./lectura.ts";
 import { procesarLote, type Lectura } from "./lote.ts";
 import { desplazarA, irA } from "./navegacion.ts";
 import { acomodarNodos } from "./orden-dom.ts";
+import { iniciarPagos } from "./pagos-pantalla.ts";
+import { iniciarPestanas } from "./pestanas.ts";
 import {
   agregarFila,
   crearFila,
@@ -73,7 +87,7 @@ import {
   anuncioOrden,
   anuncioReferencia,
   anuncioUmbral,
-  avisosDeFila,
+  avisosConControl,
   conteosFiltros,
   detalleFilaPartes,
   estadoDeZona,
@@ -100,13 +114,26 @@ import {
   tituloComprobante,
   totalesVista,
   type EstadoZona,
-  type EtiquetaVista,
   describedbyConError,
   textoPlanillaVaciada,
   textoRegistroCargado,
   type ParteDetalle,
   type TextosZona,
 } from "./vista.ts";
+import {
+  anuncioFilaAbierta,
+  etiquetaControl,
+  filaVisible,
+  nombreSeveridad,
+  observacionesDeFila,
+  presentacionResumenControl,
+  resumenControl,
+  textoDetalleResumenControl,
+  textoResumenControl,
+  tituloObservaciones,
+  type ObservacionVista,
+  type ResumenControl,
+} from "./vista-control.ts";
 import { desplegarSiHaceFalta, iniciarVentanas } from "./ventanas.ts";
 
 // ------------------------------------------------------------------ Configuración
@@ -129,6 +156,8 @@ let conciliacion: Conciliacion | null = null;
 let cola: Promise<void> = Promise.resolve();
 /** Cuántas filas deja ver el filtro actual (para anunciar "Mostrando N de M"). */
 let visiblesEnPlanilla = 0;
+/** "Ver solo estos" del resumen del control: deja en la planilla solo los comprobantes con observaciones (se combina con los filtros de conciliación). */
+let soloConObservaciones = false;
 /**
  * Se incrementa cada vez que la planilla se vacía o se reemplaza. Cada tanda de archivos guarda el número con el que nació y
  * se corta sola si ya no coincide: así "Vaciar" durante la lectura no deja que la planilla se vuelva a llenar.
@@ -192,6 +221,11 @@ const cuerpo = elemento<HTMLTableSectionElement>("cuerpo");
 const notaEjemplo = elemento<HTMLElement>("nota-ejemplo");
 const bloqueTotales = elemento<HTMLElement>("totales");
 const listaTotales = elemento<HTMLUListElement>("lista-totales");
+const resumenDelControl = elemento<HTMLElement>("control-resumen");
+const iconoDelControl = elemento<HTMLElement>("control-icono");
+const titularDelControl = elemento<HTMLElement>("control-titular");
+const detalleDelControl = elemento<HTMLElement>("control-detalle");
+const botonFiltrarControl = elemento<HTMLButtonElement>("control-filtrar");
 const botonExportar = elemento<HTMLButtonElement>("exportar");
 const botonVaciar = elemento<HTMLButtonElement>("vaciar");
 
@@ -208,33 +242,12 @@ const botonEjemploCompleto2 = elemento<HTMLButtonElement>("ejemplo-completo-2");
 /** Id viejo del texto de "sin filas"; si la maquetación todavía lo conserva, se muestra y oculta junto con el estado vacío. */
 const textoVacioViejo = document.getElementById("vacio");
 
-type TonoMensaje = "info" | "ok" | "aviso" | "error";
-
-function pintarMensaje(destino: HTMLElement, texto: string, tono: TonoMensaje): void {
-  destino.textContent = texto;
-  if (texto === "") delete destino.dataset.tono;
-  else destino.dataset.tono = tono;
-}
-
 function avisar(texto: string, tono: TonoMensaje = "info"): void {
   pintarMensaje(mensajes, texto, tono);
 }
 
 function avisarRegistro(texto: string, tono: TonoMensaje = "info"): void {
   pintarMensaje(mensajesRegistro, texto, tono);
-}
-
-function hijo<K extends keyof HTMLElementTagNameMap>(
-  padre: HTMLElement,
-  etiqueta: K,
-  clase?: string,
-  texto?: string,
-): HTMLElementTagNameMap[K] {
-  const e = document.createElement(etiqueta);
-  if (clase) e.className = clase;
-  if (texto !== undefined) e.textContent = texto;
-  padre.appendChild(e);
-  return e;
 }
 
 /**
@@ -254,6 +267,19 @@ function anunciar(texto: string): void {
   if (texto !== "") window.setTimeout(() => (regionAnuncios.textContent = texto), 60);
 }
 
+/**
+ * Pestaña «Pagos»: concilia un extracto de pagos con las facturas de la planilla. Comparte con la planilla la fecha de referencia y el
+ * umbral de antigüedad; `actualizarEstados` le avisa cada vez que la planilla cambia.
+ */
+const pagos = iniciarPagos({ filas: () => filas, referencia: () => referenciaVigente, umbral: () => umbralAntiguedad, anunciar });
+
+/** Apaga «Ver solo estos» y lo dice en voz alta: el cambio no lo hizo la persona, y la lista cambia sola. */
+function quitarFiltroDeControl(anuncio: string): void {
+  if (!soloConObservaciones) return;
+  soloConObservaciones = false;
+  anunciar(anuncio);
+}
+
 function tituloPlanilla(): HTMLElement | null {
   return document.getElementById("titulo-planilla") ?? planillaSeccion.querySelector<HTMLElement>("h2");
 }
@@ -270,8 +296,10 @@ function esTactil(): boolean {
  */
 function conConfirmacion(
   boton: HTMLButtonElement,
-  opciones: { necesita: () => boolean; textoConfirmar: string; aviso: string; accion: () => void },
+  opciones: { necesita: () => boolean; textoConfirmar: string; aviso: string; accion: () => void; destino?: HTMLElement },
 ): void {
+  // Dónde se escribe el aviso: por defecto la región de estado de «Facturas recibidas»; la pestaña «Pagos» usa la suya.
+  const destino = opciones.destino ?? mensajes;
   const original = Array.from(boton.childNodes).map((n) => n.cloneNode(true));
   let confirmando = false;
   let pedidaEn = 0;
@@ -286,7 +314,7 @@ function conConfirmacion(
     boton.replaceChildren(...original.map((n) => n.cloneNode(true)));
     boton.removeAttribute("data-confirmando");
     // Solo se borra el mensaje propio: si ya apareció otro, no se pisa.
-    if (limpiarMensaje && mensajes.textContent === opciones.aviso) avisar("");
+    if (limpiarMensaje && destino.textContent === opciones.aviso) pintarMensaje(destino, "", "info");
   }
   boton.addEventListener("click", () => {
     // QA M1: un doble clic (o Enter dos veces) no es una confirmación: el segundo clic pegado al primero se ignora.
@@ -296,7 +324,7 @@ function conConfirmacion(
       pedidaEn = performance.now();
       boton.textContent = opciones.textoConfirmar;
       boton.dataset.confirmando = "true";
-      avisar(opciones.aviso, "aviso");
+      pintarMensaje(destino, opciones.aviso, "aviso");
       document.addEventListener("focusin", salioDelBoton);
       document.addEventListener("pointerdown", salioDelBoton);
       return;
@@ -336,15 +364,6 @@ function textoDeCampo(d: Comprobante, campo: Campo): string {
   }
 }
 
-/** Un único marcador de "sin dato" en las celdas (E11): el guion se ve, el lector de pantalla oye "Sin dato". */
-function marcaSinDato(): HTMLSpanElement {
-  const marca = document.createElement("span");
-  marca.className = "sin-dato";
-  hijo(marca, "span", undefined, "—").setAttribute("aria-hidden", "true");
-  hijo(marca, "span", "solo-lectores", "Sin dato");
-  return marca;
-}
-
 /** El texto de una celda, o la marca de "sin dato" si no hay. */
 function ponerCelda(celda: HTMLElement, texto: string): void {
   if (texto === "") celda.replaceChildren(marcaSinDato());
@@ -367,14 +386,6 @@ function agregarPartes(destino: HTMLElement, partes: readonly ParteDetalle[]): v
 
 // ------------------------------------------------------------------ Etiquetas y filas
 
-function crearEtiqueta(e: EtiquetaVista, claseExtra = ""): HTMLSpanElement {
-  const s = document.createElement("span");
-  s.className = `etiqueta-estado${claseExtra === "" ? "" : ` ${claseExtra}`}`;
-  s.dataset.tono = e.tono;
-  s.append(icono(e.icono), document.createTextNode(e.texto));
-  return s;
-}
-
 interface Control {
   entrada: HTMLInputElement | HTMLSelectElement;
   marcaEditado: HTMLElement;
@@ -390,6 +401,14 @@ interface Panel {
   controles: Map<Campo, Control>;
   listaAvisos: HTMLElement;
   bloqueAvisos: HTMLElement;
+  /** Neto, IVA, otros conceptos y vencimiento del CAE: lo que el QR no trae. */
+  controlesDesglose: Map<CampoDesglose, Control>;
+  /** De dónde sale el desglose que se ve ahora (registro, escrito a mano o ninguno). */
+  origenDesglose: HTMLElement;
+  /** Observaciones del control del comprobante, antes de los campos. */
+  bloqueControl: HTMLElement;
+  tituloControl: HTMLElement;
+  listaControl: HTMLElement;
 }
 
 interface Celdas {
@@ -502,6 +521,14 @@ function construirPanel(fila: Fila): Panel {
   celda.colSpan = columnasVisibles();
 
   const titulo = hijo(celda, "h3", "solo-lectores");
+  // Lo que hay que mirar va antes de los campos: se lee primero y es lo que se corrige después.
+  const bloqueControl = hijo(celda, "div", "edicion-control");
+  bloqueControl.hidden = true;
+  const tituloControl = hijo(bloqueControl, "h4", "edicion-control-titulo");
+  tituloControl.id = `control-titulo-${fila.id}`;
+  bloqueControl.setAttribute("role", "group");
+  bloqueControl.setAttribute("aria-labelledby", tituloControl.id);
+  const listaControl = hijo(bloqueControl, "ul", "control-lista");
   const rejilla = hijo(celda, "div", "campos-edicion");
   const controles = new Map<Campo, Control>();
   for (const def of CAMPOS_EDICION) {
@@ -540,6 +567,48 @@ function construirPanel(fila: Fila): Panel {
     controles.set(def.campo, { entrada, marcaEditado, error, textoError });
   }
 
+  // Desglose: el QR no lo trae. Sale del registro (si trae esas columnas) o se escribe acá; lo escrito manda.
+  const controlesDesglose = new Map<CampoDesglose, Control>();
+  const bloqueDesglose = hijo(celda, "div", "edicion-lectura edicion-desglose");
+  bloqueDesglose.setAttribute("role", "group");
+  const tituloDesglose = hijo(bloqueDesglose, "p", "edicion-avisos-titulo", "Desglose del comprobante");
+  tituloDesglose.id = `desglose-titulo-${fila.id}`;
+  bloqueDesglose.setAttribute("aria-labelledby", tituloDesglose.id);
+  const origenDelDesglose = hijo(bloqueDesglose, "p", "edicion-desglose-origen");
+  origenDelDesglose.id = `desglose-origen-${fila.id}`;
+  // La nota de origen ("Sin desglose: el QR no trae…") se lee al entrar al grupo.
+  bloqueDesglose.setAttribute("aria-describedby", origenDelDesglose.id);
+  const rejillaDesglose = hijo(bloqueDesglose, "div", "campos-edicion");
+  for (const def of CAMPOS_DESGLOSE) {
+    const id = `desglose-${fila.id}-${def.campo}`;
+    const grupo = hijo(rejillaDesglose, "div", "campo");
+    grupo.dataset.campo = def.campo;
+    hijo(grupo, "label", "campo-etiqueta", def.etiqueta).htmlFor = id;
+    const input = document.createElement("input");
+    input.type = "text";
+    input.id = id;
+    input.autocomplete = "off";
+    input.spellcheck = false;
+    input.inputMode = def.campo === "vencimientoCae" ? "numeric" : "decimal";
+    input.className = "entrada entrada-mono";
+    grupo.appendChild(input);
+    if (def.campo === "vencimientoCae") {
+      // El formato se dice antes de equivocarse, no solo en el mensaje de error (WCAG 3.3.2).
+      const ayuda = hijo(grupo, "p", "campo-ayuda", "Formato DD/MM/AAAA");
+      ayuda.id = `ayuda-${id}`;
+      input.setAttribute("aria-describedby", ayuda.id);
+    }
+    const marcaEditado = hijo(grupo, "span", "campo-editado", "Editado");
+    marcaEditado.hidden = true;
+    const error = hijo(grupo, "p", "error-campo");
+    error.id = `error-${id}`;
+    error.hidden = true;
+    error.appendChild(icono("alerta"));
+    const textoError = hijo(error, "span");
+    input.addEventListener("change", () => alEditarDesglose(fila.id, def.campo));
+    controlesDesglose.set(def.campo, { entrada: input, marcaEditado, error, textoError });
+  }
+
   const lectura = hijo(celda, "div", "edicion-lectura");
   const archivo = hijo(lectura, "p", "edicion-archivo", "Archivo: ");
   hijo(archivo, "span", "mono", fila.origen);
@@ -567,7 +636,7 @@ function construirPanel(fila: Fila): Panel {
       cerrarEdicion(fila.id);
     }
   });
-  return { tr, celda, titulo, controles, listaAvisos, bloqueAvisos };
+  return { tr, celda, titulo, controles, controlesDesglose, origenDesglose: origenDelDesglose, listaAvisos, bloqueAvisos, bloqueControl, tituloControl, listaControl };
 }
 
 /** Cantidad de columnas que se ven ahora (la maquetación oculta algunas según el ancho de la planilla). */
@@ -584,13 +653,17 @@ function ajustarPaneles(): void {
 
 function abrirEdicion(id: number): void {
   const celdas = celdasPorFila.get(id);
-  const fila = filas.find((f) => f.id === id);
+  const fila = filasConDesglose().find((f) => f.id === id);
   if (!celdas || !fila || celdas.panel) return;
   enEdicion.add(id);
   celdas.panel = construirPanel(fila);
   celdas.tr.after(celdas.panel.tr);
   actualizarEstados();
   celdas.panel.controles.get("importe")?.entrada.focus();
+  // El foco va al primer campo: si la fila tiene observaciones, se dicen en voz alta (el detalle está justo antes de los campos).
+  const numero = filas.findIndex((f) => f.id === id) + 1;
+  const dicho = anuncioFilaAbierta(numero, observacionesDeFila(fila));
+  if (dicho !== "") anunciar(dicho);
 }
 
 /** Cierra el panel y devuelve el foco al botón "Editar" de esa fila. */
@@ -633,6 +706,46 @@ function alEditar(id: number, campo: Campo): void {
   // El aviso general solo se limpia si ya no queda otro campo de este panel con error.
   if (!Array.from(panel.controles.values()).some((c) => c.entrada.hasAttribute("aria-invalid"))) avisar("");
   actualizarEstados();
+}
+
+/**
+ * Aplica lo que se escribió en un campo del desglose. Igual que `alEditar`: si no es válido, el texto queda en el campo con su mensaje y
+ * la planilla conserva el valor anterior. El desglose escrito parte del que la fila ya tiene (el del registro, si no escribió el suyo).
+ */
+function alEditarDesglose(id: number, campo: CampoDesglose): void {
+  const panel = celdasPorFila.get(id)?.panel;
+  const control = panel?.controlesDesglose.get(campo);
+  if (!panel || !control) return;
+  const vigente = filasConDesglose().find((f) => f.id === id)?.desglose;
+  const resultado = editarDesglose(filas, id, campo, control.entrada.value, vigente);
+  // Con error, su id va primero; sin error, queda solo la ayuda fija del campo (si la tiene).
+  const describir = (hayError: boolean): void => {
+    const d = describedbyConError(control.entrada.getAttribute("aria-describedby"), control.error.id, hayError);
+    if (d === null) control.entrada.removeAttribute("aria-describedby");
+    else control.entrada.setAttribute("aria-describedby", d);
+  };
+  if (resultado instanceof Error) {
+    control.entrada.setAttribute("aria-invalid", "true");
+    describir(true);
+    control.textoError.textContent = resultado.message;
+    control.error.hidden = false;
+    avisar(`${resultado.message} La planilla conserva el valor anterior hasta que lo corrija.`, "error");
+    return;
+  }
+  filas = resultado;
+  control.entrada.removeAttribute("aria-invalid");
+  describir(false);
+  control.error.hidden = true;
+  control.textoError.textContent = "";
+  if (!Array.from(panel.controlesDesglose.values()).some((c) => c.entrada.hasAttribute("aria-invalid"))) avisar("");
+  // Lo que quedó escrito se vuelve a mostrar con su formato ("1000" pasa a "1.000,00").
+  control.entrada.value = textoDeDesglose(filasConDesglose().find((f) => f.id === id)?.desglose, campo);
+  actualizarEstados();
+}
+
+/** Las filas con el desglose que se ve ahora: el escrito a mano o, si no hay, el del registro. Lo usa todo lo que controla o exporta. */
+function filasConDesglose(): Fila[] {
+  return conDesgloseDelRegistro(filas, registro?.registros ?? []);
 }
 
 /** Quita la fila y lleva el foco al "Editar" de la siguiente fila visible o, si no hay, al título de la planilla. */
@@ -686,7 +799,9 @@ function acomodarFilasEnDom(ordenadas: readonly Fila[]): void {
 
 function actualizarEstados(): void {
   const hoy = new Date();
-  conciliacion = registro === null ? null : conciliar(filas, registro.registros, hoy);
+  // El control del comprobante trabaja sobre las filas con su desglose (el del registro o el escrito a mano); la planilla guarda solo lo escrito.
+  const conDesglose = filasConDesglose();
+  conciliacion = registro === null ? null : conciliar(conDesglose, registro.registros, hoy);
   const filtro: FiltroFilas = conciliacion === null ? "todas" : filtroActual();
   let filasQueCumplen = 0;
   const repetidas = duplicadas(filas);
@@ -695,14 +810,23 @@ function actualizarEstados(): void {
   const cargadasDosVeces = registro === null || conciliacion === null ? new Set<number>() : filasCargadasDosVeces(filas, conciliacion, registro.clavesRepetidas);
   const referencia = resolverReferencia({ manual: fechaReferenciaManual, soloEjemplo: filas.length > 0 && filas.every(esFilaDeEjemplo), hoy });
 
-  filas.forEach((fila, i) => {
+  // Control del comprobante: observaciones de cada fila y cuántas filas las tienen. Sin ninguna, "Ver solo estos" se apaga solo.
+  const observacionesPorFila = new Map(conDesglose.map((f) => [f.id, observacionesDeFila(f, hoy)] as const));
+  const control = resumenControl(
+    conDesglose.map((f) => ({ controlada: f.conQr, duplicada: repetidas.has(f.id), conDesglose: hayDesglose(f.desglose), observaciones: observacionesPorFila.get(f.id) ?? [] })),
+  );
+  if (control.conObservaciones === 0) quitarFiltroDeControl(`Ya no hay comprobantes con observaciones: se muestran todos (${filas.length}).`);
+
+  conDesglose.forEach((fila, i) => {
     const celdas = celdasPorFila.get(fila.id);
     if (!celdas) return;
     const numero = i + 1;
+    const observaciones = observacionesPorFila.get(fila.id) ?? [];
     const { estado, motivos } = estadoFila(fila, hoy);
     const original = repetidas.get(fila.id);
     const resultado = conciliacion?.porFila.get(fila.id);
-    const avisos = avisosDeFila(fila, motivos);
+    // Con observaciones del control, la línea de la fila dice primero lo más grave (los errores) y con las mismas palabras que el detalle.
+    const avisos = avisosConControl(fila, motivos, observaciones);
     const dias = diasDeFila(fila, resultado, referencia.fecha);
     const detalle = detalleFilaPartes(resultado, fila, avisos, dias, referencia.origen);
     const antigua = etiquetaAntigua(dias, umbralAntiguedad);
@@ -730,8 +854,9 @@ function actualizarEstados(): void {
     // duplicada es el de conciliación (C1: estado propio, no "Ya cargada"), así que no se repite en la columna Lectura.
     const numeroDelOriginal = original === undefined ? undefined : (indicePorId.get(original) ?? "?");
     const etiquetasLectura: HTMLElement[] = [];
-    const lectura = etiquetaLectura(estado);
-    if (lectura) etiquetasLectura.push(crearEtiqueta(lectura));
+    // Con QR y observaciones, la etiqueta dice la gravedad ("1 error", "2 avisos"); sin observaciones, "Leída" queda como texto suave.
+    const lectura = observaciones.length > 0 ? etiquetaControl(observaciones) : etiquetaLectura(estado);
+    if (lectura) etiquetasLectura.push(crearEtiqueta(lectura, observaciones.length > 0 ? "etiqueta-control" : ""));
     if (numeroDelOriginal !== undefined && resultado === undefined) etiquetasLectura.push(crearEtiqueta(etiquetaDuplicada(numeroDelOriginal)));
     if (fila.editados.length > 0) etiquetasLectura.push(crearEtiqueta(ETIQUETA_EDITADA, "etiqueta-editada"));
 
@@ -764,7 +889,7 @@ function actualizarEstados(): void {
     ponerCelda(celdas.fecha, fechaFormateada);
     ponerCelda(celdas.importe, d.importe === null ? "" : formatearMonto(d.moneda, d.importe));
 
-    const mostrar = mostrarConFiltro(filtro, resultado, original !== undefined);
+    const mostrar = filaVisible({ filtro, resultado, duplicada: original !== undefined, soloConObservaciones, observaciones });
     if (mostrar) filasQueCumplen++;
     // Una fila que se está editando no desaparece aunque el cambio la saque del filtro: se perdería el foco y el panel.
     celdas.tr.hidden = !mostrar && !editando;
@@ -775,7 +900,7 @@ function actualizarEstados(): void {
     celdas.botonEditar.setAttribute("aria-expanded", String(editando));
     if (celdas.panel) {
       celdas.botonEditar.setAttribute("aria-controls", celdas.panel.tr.id);
-      actualizarPanel(celdas.panel, fila, numero, avisos, celdas.tr.hidden);
+      actualizarPanel(celdas.panel, fila, numero, avisos, observaciones, origenDesglose(filas.find((f) => f.id === fila.id) ?? fila, registro?.registros ?? []), celdas.tr.hidden);
     } else {
       celdas.botonEditar.removeAttribute("aria-controls");
     }
@@ -786,7 +911,7 @@ function actualizarEstados(): void {
   pintarControlesDeAntiguedad(referencia);
 
   const hay = filas.length > 0;
-  const r = resumen(filas, hoy);
+  const r = resumen(conDesglose, hoy);
   const hayRegistro = registro !== null && conciliacion !== null;
 
   document.body.toggleAttribute("data-hay-datos", hay);
@@ -819,20 +944,70 @@ function actualizarEstados(): void {
   metaPlanillaEl.textContent = metaPlanilla(filasQueCumplen, filas.length);
   pintarResultado(filasQueCumplen, filtro);
   pintarFiltros();
+  pintarControl(control, hay);
   pintarZonas();
+  pagos.actualizar();
 }
 
-function actualizarPanel(panel: Panel, fila: Fila, numero: number, avisos: readonly string[], oculto: boolean): void {
+/** Resumen del control sobre la tabla: una línea que dice cuántos tienen observaciones y, si hay, el botón para verlos solos. */
+function pintarControl(r: ResumenControl, hay: boolean): void {
+  const titular = textoResumenControl(r);
+  resumenDelControl.hidden = !hay || titular === "";
+  if (resumenDelControl.hidden) return;
+  const hayObservaciones = r.conObservaciones > 0;
+  const { tono, icono: nombreIcono } = presentacionResumenControl(r);
+  resumenDelControl.dataset.tono = tono;
+  iconoDelControl.replaceChildren(icono(nombreIcono));
+  titularDelControl.textContent = titular;
+  detalleDelControl.textContent = textoDetalleResumenControl(r);
+  botonFiltrarControl.hidden = !hayObservaciones;
+  botonFiltrarControl.setAttribute("aria-pressed", String(soloConObservaciones));
+}
+
+/** Una observación en el detalle de la fila: la gravedad escrita ("Error", "Aviso") con su ícono, y la frase que dice qué mirar. */
+function pintarObservacion(lista: HTMLElement, o: ObservacionVista): void {
+  const li = hijo(lista, "li");
+  li.dataset.severidad = o.severidad;
+  const tipo = hijo(li, "span", "control-tipo");
+  tipo.append(icono(o.severidad === "error" ? "error" : "alerta"), nombreSeveridad(o.severidad));
+  hijo(tipo, "span", "solo-lectores", ":");
+  hijo(li, "span", "control-mensaje", o.mensaje);
+}
+
+function actualizarPanel(
+  panel: Panel,
+  fila: Fila,
+  numero: number,
+  avisos: readonly string[],
+  observaciones: readonly ObservacionVista[],
+  origen: ReturnType<typeof origenDesglose>,
+  oculto: boolean,
+): void {
   panel.tr.hidden = oculto;
   panel.titulo.textContent = `Editar la fila ${numero}`;
+  panel.origenDesglose.textContent = textoOrigenDesglose(origen);
+  for (const [campo, control] of panel.controlesDesglose) {
+    // Lo que se está escribiendo (o está mal) no se pisa: solo se refrescan los campos quietos, por si llegó un registro mientras tanto.
+    const texto = textoDeDesglose(fila.desglose, campo);
+    if (document.activeElement !== control.entrada && !control.entrada.hasAttribute("aria-invalid")) control.entrada.value = texto;
+    const escrito = origen.tipo === "manual" && texto !== "";
+    control.entrada.classList.toggle("editada", escrito);
+    control.marcaEditado.hidden = !escrito;
+  }
   for (const [campo, control] of panel.controles) {
     const editado = fila.editados.includes(campo);
     control.entrada.classList.toggle("editada", editado);
     control.marcaEditado.hidden = !editado;
   }
+  // Con observaciones del control, ellas dicen todo lo que había que mirar (con su gravedad): "Avisos de la lectura" solo conserva la nota propia de la fila.
+  panel.listaControl.replaceChildren();
+  for (const o of observaciones) pintarObservacion(panel.listaControl, o);
+  panel.bloqueControl.hidden = observaciones.length === 0;
+  panel.tituloControl.textContent = observaciones.length === 0 ? "" : tituloObservaciones(observaciones);
+  const restantes = observaciones.length > 0 ? [fila.nota].filter((a) => a !== "") : avisos;
   panel.listaAvisos.replaceChildren();
-  for (const aviso of avisos) hijo(panel.listaAvisos as HTMLElement, "li", undefined, aviso);
-  panel.bloqueAvisos.hidden = avisos.length === 0;
+  for (const aviso of restantes) hijo(panel.listaAvisos as HTMLElement, "li", undefined, aviso);
+  panel.bloqueAvisos.hidden = restantes.length === 0;
 }
 
 // ------------------------------------------------------------------ Antigüedad (controles opcionales)
@@ -1039,21 +1214,11 @@ function pintarResultado(filasQueCumplen: number, filtro: FiltroFilas): void {
   const todasPorImporte = registro.lineasImporteExcesivo.length === registro.lineasInvalidas.length;
   if (invalidas !== "" && !todasPorImporte) avisos.push(`En el registro, ${invalidas.charAt(0).toLowerCase()}${invalidas.slice(1)}`);
   if (excesivos !== "") avisos.push(`En el registro, ${excesivos.charAt(0).toLowerCase()}${excesivos.slice(1)}`);
+  const desgloseIlegible = textoDesgloseIlegible(registro.lineasDesgloseIlegible);
+  if (desgloseIlegible !== "") avisos.push(desgloseIlegible);
   if (filtro !== "todas" && filasQueCumplen === 0) avisos.push("Ninguna fila cumple con el filtro elegido.");
   avisosConcilia.textContent = avisos.join(" ");
   avisosConcilia.hidden = avisos.length === 0;
-}
-
-/**
- * El texto de una acción de "Requieren atención". Lo que sigue a la primera palabra ("detalle", en "Ver detalle") va en
- * su propio `span.accion-extra`: en interiores angostos la maquetación lo oculta y queda "Ver" (E8). El nombre
- * accesible completo va en `aria-label`.
- */
-function textoDeAccion(destino: HTMLElement, texto: string): void {
-  const [base = "", ...resto] = texto.split(" ");
-  const visible = hijo(destino, "span", "accion-texto", base);
-  if (resto.length > 0) hijo(visible, "span", "accion-extra", ` ${resto.join(" ")}`);
-  destino.appendChild(icono("flecha-der"));
 }
 
 /** Aplica un filtro desde "Ver" o "Ver los N en la planilla" y lleva el foco al título de la planilla. */
@@ -1188,6 +1353,12 @@ function errorDeRegistro(texto: string): void {
   pintarZonas();
 }
 
+/** "En el registro, 2 líneas tienen un neto, IVA… que no se pudieron leer: 4, 9. Se ignoraron esos datos." Vacío si no hay ninguna. */
+function textoDesgloseIlegible(lineas: readonly number[]): string {
+  const t = describirDesgloseIlegible(lineas);
+  return t === "" ? "" : `En el registro, ${t}`;
+}
+
 function aplicarRegistro(texto: string, origen: string, extra = ""): void {
   const r = leerRegistro(texto);
   if (r instanceof Error) {
@@ -1205,6 +1376,7 @@ function aplicarRegistro(texto: string, origen: string, extra = ""): void {
       extra,
       describirEncabezadosDuplicados(r.encabezadosDuplicados),
       describirLineasInvalidas(r.lineasInvalidas),
+      textoDesgloseIlegible(r.lineasDesgloseIlegible),
     ]
       .filter((x) => x !== "")
       .join(" "),
@@ -1266,7 +1438,7 @@ function cargarRegistroDeEjemplo(): void {
     extra = `También se cargaron ${cantidad} facturas de ejemplo en la planilla.`;
     renderTodo();
   }
-  aplicarRegistro(registroEjemplo(), "ejemplo", extra);
+  aplicarRegistro(registroEjemploCompleto(), "ejemplo", extra);
 }
 botonRegistroEjemplo.addEventListener("click", cargarRegistroDeEjemplo);
 botonRegistroEjemplo2.addEventListener("click", cargarRegistroDeEjemplo);
@@ -1288,9 +1460,17 @@ for (const radio of grupoFiltros.querySelectorAll<HTMLInputElement>('input[name=
   });
 }
 
+botonFiltrarControl.addEventListener("click", () => {
+  soloConObservaciones = !soloConObservaciones;
+  actualizarEstados();
+  anunciar(soloConObservaciones ? textoMostrando(visiblesEnPlanilla, filas.length) : `Mostrando todos los comprobantes: ${filas.length}`);
+});
+
 // ------------------------------------------------------------------ Carga
 
 function agregarComprobante(origen: string, comprobante: Comprobante | null, nota = "", detalle = ""): void {
+  // Con «Ver solo estos» activo, la fila nueva quedaría oculta y la persona no vería qué se agregó.
+  quitarFiltroDeControl("Se quitó «Ver solo estos» para mostrar los comprobantes agregados.");
   filas = agregarFila(filas, crearFila(siguienteId(filas), origen, comprobante, nota, detalle));
 }
 
@@ -1380,6 +1560,7 @@ function vaciarPlanilla(): void {
   filas = [];
   enEdicion.clear();
   marcarFiltro("todas");
+  soloConObservaciones = false;
 }
 
 entradaArchivos.addEventListener("change", () => {
@@ -1434,7 +1615,7 @@ formularioUrl.addEventListener("submit", (e) => {
 
 /** Agrega las facturas de ejemplo a la planilla (sin redibujar). Devuelve cuántas filas agregó. */
 function cargarFacturasDeEjemplo(): number {
-  const ejemplos = generarEjemplos(new Date());
+  const ejemplos = generarEjemplosCompletos(new Date());
   for (const ejemplo of ejemplos) {
     if (ejemplo.url === null) {
       agregarComprobante(ejemplo.origen, null, "Imagen de ejemplo sin QR legible: se puede completar a mano.", ejemplo.caso);
@@ -1455,7 +1636,7 @@ botonEjemplos.addEventListener("click", () => {
 });
 
 // Un solo arranque: facturas + registro de ejemplo, y se muestra el resultado de la conciliación.
-function cargarEjemploCompleto(): void {
+function reemplazarPorElEjemploCompleto(): void {
   cerrarGlobo(); // pulsar "Ver un ejemplo completo" cuenta como haber visto la primera visita (7.4)
   vaciarPlanilla();
   registro = null;
@@ -1465,9 +1646,27 @@ function cargarEjemploCompleto(): void {
   const cantidad = cargarFacturasDeEjemplo();
   renderTodo();
   avisar("");
-  aplicarRegistro(registroEjemplo(), "ejemplo", `También se cargaron ${cantidad} facturas de ejemplo.`);
+  aplicarRegistro(registroEjemploCompleto(), "ejemplo", `También se cargaron ${cantidad} facturas de ejemplo.`);
+}
+
+function cargarEjemploCompleto(): void {
+  reemplazarPorElEjemploCompleto();
   desplegarSiHaceFalta(seccionResultado);
   desplazarA(seccionResultado);
+}
+
+const seccionResultadoPagos = elemento<HTMLElement>("resultado-pagos");
+
+/**
+ * «Ver un ejemplo de pagos»: el extracto de ejemplo está armado para las facturas de ejemplo. Si la planilla está vacía o tiene facturas
+ * propias se la reemplaza por el ejemplo completo (la confirmación previa la pide el botón); si ya es el ejemplo, se la deja como está.
+ */
+function cargarPagosDeEjemplo(): void {
+  cerrarGlobo();
+  if (filas.length === 0 || filas.some((f) => !esFilaDeEjemplo(f))) reemplazarPorElEjemploCompleto();
+  if (!pagos.cargarTexto(extractoEjemplo(), "ejemplo")) return;
+  desplegarSiHaceFalta(seccionResultadoPagos);
+  desplazarA(seccionResultadoPagos);
 }
 
 // Cargar el ejemplo reemplaza la planilla: si hay datos propios, se pide confirmar antes de perderlos.
@@ -1480,12 +1679,22 @@ for (const boton of [botonEjemploCompleto, botonEjemploCompleto2]) {
   });
 }
 
+for (const id of ["pagos-ejemplo", "pagos-ejemplo-2", "pagos-ejemplo-3"]) {
+  conConfirmacion(elemento<HTMLButtonElement>(id), {
+    necesita: () => filas.some((f) => !esFilaDeEjemplo(f)),
+    textoConfirmar: "Confirmar: reemplazar la planilla por el ejemplo",
+    aviso: "La planilla actual se reemplazará por el ejemplo. Vuelva a presionar el botón para confirmar.",
+    accion: cargarPagosDeEjemplo,
+    destino: pagos.mensajes,
+  });
+}
+
 // ------------------------------------------------------------------ Exportar y vaciar
 
 botonExportar.addEventListener("click", () => {
   const ahora = new Date();
   const dosVeces = registro === null || conciliacion === null ? undefined : filasCargadasDosVeces(filas, conciliacion, registro.clavesRepetidas);
-  const csv = aCsv(filas, ahora, conciliacion?.porFila, dosVeces);
+  const csv = aCsv(filasConDesglose(), ahora, conciliacion?.porFila, dosVeces);
   const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
   const url = URL.createObjectURL(blob);
   const enlace = document.createElement("a");
@@ -1526,6 +1735,17 @@ for (const th of tabla.querySelectorAll("thead th")) th.setAttribute("role", "co
 if (typeof ResizeObserver !== "undefined") new ResizeObserver(ajustarPaneles).observe(envoltorio);
 
 iniciarVentanas();
+iniciarPestanas((tab) => {
+  // El título de la página y el enlace «Ir al resultado» siguen a la pestaña que se está viendo.
+  if (tab.dataset.titulo) document.title = tab.dataset.titulo;
+  const saltar = document.querySelector<HTMLAnchorElement>("a.saltar");
+  const destino = tab.dataset.saltar === undefined ? null : document.getElementById(tab.dataset.saltar);
+  if (saltar && destino) {
+    saltar.dataset.destino = destino.id;
+    saltar.href = `#${destino.closest(".ventana")?.id ?? destino.id}`;
+    if (tab.dataset.saltarTexto) saltar.textContent = tab.dataset.saltarTexto;
+  }
+});
 iniciarGuia();
 
 // "Ordenar y antigüedad": abierto desde 40 rem (el mismo corte que pasa la planilla a tarjetas) y plegado en celular. Solo fija el
@@ -1546,7 +1766,7 @@ if (bloqueAntiguedad instanceof HTMLDetailsElement) {
 // "Ir al resultado": si la ventana está plegada, se despliega antes de llevar el foco a su título.
 document.querySelector<HTMLAnchorElement>("a.saltar")?.addEventListener("click", (e) => {
   e.preventDefault();
-  irA(document.getElementById("titulo-resultado"));
+  irA(document.getElementById(e.currentTarget instanceof HTMLElement ? (e.currentTarget.dataset.destino ?? "titulo-resultado") : "titulo-resultado"));
 });
 
 const enlaceCodigo = document.querySelector<HTMLAnchorElement>("#enlace-codigo");

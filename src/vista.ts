@@ -21,6 +21,7 @@ import {
   diferenciaImporte,
   accionDeMalCargada,
   editoDatosDelCruce,
+  contarConDesglose,
   lineasLeidas,
   textoCargadaVeces,
   itemsAtencion,
@@ -310,11 +311,20 @@ export function avisosDeFila(fila: Fila, motivos: readonly string[]): string[] {
   return avisos.filter((a) => a !== "");
 }
 
-/** El primer texto y, si hay más, "y N más" (la lista completa vive en el panel de edición). */
+/**
+ * Los avisos de una fila cuando el control del comprobante tiene observaciones: la nota de la fila y esas frases (con lo más grave
+ * primero, y con las mismas palabras que el detalle). Sin observaciones, los de siempre (`avisosDeFila`).
+ */
+export function avisosConControl(fila: Fila, motivos: readonly string[], observaciones: readonly { mensaje: string }[]): string[] {
+  if (observaciones.length === 0) return avisosDeFila(fila, motivos);
+  return [fila.nota, ...observaciones.map((o) => o.mensaje)].filter((a) => a !== "");
+}
+
+/** El primer texto y, si hay más, "y N más." (la lista completa vive en el panel de edición). Sin punto doble antes de la «y». */
 export function unaLinea(textos: readonly string[]): string {
   const [primero, ...resto] = textos;
   if (primero === undefined) return "";
-  return resto.length === 0 ? primero : `${primero} y ${resto.length} más`;
+  return resto.length === 0 ? primero : `${primero.replace(/\.$/, "")} y ${resto.length} más.`;
 }
 
 function faltantesParaConciliar(fila: Fila): string {
@@ -486,9 +496,11 @@ export function textoRegistroCargado(origen: string, r: LecturaRegistro): string
   const base = origen === "ejemplo" ? "Registro de ejemplo cargado" : `Registro cargado (${origen})`;
   const distintos = r.registros.length;
   const lineas = lineasLeidas(r);
-  if (lineas === distintos) return `${base}: ${plural(distintos, "comprobante", "comprobantes")}.`;
+  const conDesglose = contarConDesglose(r);
+  const desglose = conDesglose === 0 ? "" : ` El desglose (neto, IVA, otros o vencimiento del CAE) viene en ${plural(conDesglose, "comprobante", "comprobantes")}.`;
+  if (lineas === distintos) return `${base}: ${plural(distintos, "comprobante", "comprobantes")}.${desglose}`;
   const repetidas = r.clavesRepetidas.length;
-  return `${base}: ${plural(distintos, "comprobante distinto", "comprobantes distintos")} en ${conMiles(lineas)} ${lineas === 1 ? "línea" : "líneas"}; ${plural(repetidas, "figura", "figuran")} más de una vez.`;
+  return `${base}: ${plural(distintos, "comprobante distinto", "comprobantes distintos")} en ${conMiles(lineas)} ${lineas === 1 ? "línea" : "líneas"}; ${plural(repetidas, "figura", "figuran")} más de una vez.${desglose}`;
 }
 
 /**

@@ -11,6 +11,7 @@ import {
 import { formatearCuit } from "./cuit.ts";
 import { detalleCargadaVariasVeces, editoDatosDelCruce, textoCargadaVeces, textoResultado, type Resultado } from "./conciliacion.ts";
 import { duplicadas, estadoFila, type Fila } from "./planilla.ts";
+import { nombreSeveridad, observacionesDeFila } from "./vista-control.ts";
 
 export const BOM = "﻿";
 const SEPARADOR = ";";
@@ -79,7 +80,9 @@ export function aCsv(filas: readonly Fila[], hoy: Date = new Date(), conciliacio
     const duplicada = original !== undefined;
     const signo = esNotaDeCredito(d.tipoCmp) ? -1 : 1;
     const enTotal = duplicada || d.importe === null ? null : signo * d.importe;
-    const avisos = [fila.nota, ...motivos].filter((x) => x !== "").join(" ");
+    // Con QR, las mismas observaciones que la pantalla, con su gravedad escrita («Error:» o «Aviso:»): en el CSV no hay colores.
+    const observaciones = fila.conQr ? observacionesDeFila(fila, hoy).map((o) => `${nombreSeveridad(o.severidad)}: ${o.mensaje}`) : motivos;
+    const avisos = [fila.nota, ...observaciones].filter((x) => x !== "").join(" ");
 
     lineas.push(
       [

@@ -3,10 +3,10 @@
    no al de la pantalla: con la guía acoplada o a 840 px cambia solo. */
 
 /* Sin comprobantes: solo el estado vacío. Con comprobantes: el resumen. */
-body:not([data-hay-datos]) .resultado-resumen {
+body:not([data-hay-datos]) #resultado .resultado-resumen {
   display: none;
 }
-body[data-hay-datos] .vacio-resultado {
+body[data-hay-datos] #resultado .vacio-resultado {
   display: none;
 }
 

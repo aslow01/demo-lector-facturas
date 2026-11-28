@@ -6,6 +6,7 @@ import html from "../index.html?raw";
 import { agregarFila, crearFila, siguienteId, totalesPorMoneda, type Fila } from "../src/planilla.ts";
 import {
   anuncioConciliacion,
+  avisosConControl,
   avisosDeFila,
   conteosFiltros,
   detalleFila,
@@ -30,7 +31,7 @@ import {
   unaLinea,
 } from "../src/vista.ts";
 
-const HOY = new Date(2026, 10, 17);
+const HOY = new Date(2026, 10, 17, 12);
 const CUIT_A = "30990000014";
 const CUIT_B = "30990000200";
 
@@ -300,13 +301,23 @@ describe("detalle de una línea por fila", () => {
     expect(avisosDeFila(conQr as Fila, [])).toEqual([]);
   });
 
+  it("avisosConControl: con observaciones del control, la nota y esas frases; sin ellas, lo de siempre", () => {
+    const [conQr] = planilla({});
+    const [sinQr] = planilla(null);
+    const o = [{ mensaje: "Error uno." }, { mensaje: "Aviso dos." }];
+    expect(avisosConControl({ ...(conQr as Fila), nota: "Nota." }, ["Fecha futura."], o)).toEqual(["Nota.", "Error uno.", "Aviso dos."]);
+    expect(avisosConControl(conQr as Fila, ["Fecha futura."], o)).toEqual(["Error uno.", "Aviso dos."]);
+    expect(avisosConControl(conQr as Fila, ["Fecha futura."], [])).toEqual(["Fecha futura."]);
+    expect(avisosConControl({ ...(sinQr as Fila), nota: "No se encontró ningún QR." }, ["Falta algo."], [])).toEqual(["No se encontró ningún QR."]);
+  });
+
   it("revisar: el primer motivo y 'y N más' si hay varios", () => {
     const [f] = planilla({ cuit: "30990000015" });
     expect(detalleFila({ tipo: "revisar" }, f as Fila, ["CUIT con dígito inválido."])).toBe("CUIT con dígito inválido.");
     expect(detalleFila({ tipo: "revisar" }, f as Fila, ["CUIT con dígito inválido.", "Fecha futura.", "Total en cero."])).toBe(
-      "CUIT con dígito inválido. y 2 más",
+      "CUIT con dígito inválido y 2 más.",
     );
-    expect(detalleFila({ tipo: "revisar" }, f as Fila, ["A.", "B."])).toBe("A. y 1 más");
+    expect(detalleFila({ tipo: "revisar" }, f as Fila, ["A.", "B."])).toBe("A y 1 más.");
   });
 
   it("otro importe: los dos importes con su moneda", () => {
@@ -344,14 +355,22 @@ describe("detalle de una línea por fila", () => {
 
   it("sin registro: el primer aviso de lectura", () => {
     const [f] = planilla({});
-    expect(detalleFila(undefined, f as Fila, ["Fecha futura.", "Total en cero."])).toBe("Fecha futura. y 1 más");
+    expect(detalleFila(undefined, f as Fila, ["Fecha futura.", "Total en cero."])).toBe("Fecha futura y 1 más.");
     expect(detalleFila(undefined, f as Fila, [])).toBe("");
   });
 
   it("unaLinea agrega 'y N más' solo si hay más de un texto", () => {
     expect(unaLinea([])).toBe("");
     expect(unaLinea(["A."])).toBe("A.");
-    expect(unaLinea(["A.", "B."])).toBe("A. y 1 más");
+    expect(unaLinea(["A.", "B."])).toBe("A y 1 más.");
+  });
+
+  it("unaLinea no deja un punto antes de la «y»: el texto compuesto se lee de corrido", () => {
+    expect(unaLinea(["El CUIT del emisor tiene el dígito verificador inválido.", "B.", "C.", "D.", "E."])).toBe(
+      "El CUIT del emisor tiene el dígito verificador inválido y 4 más.",
+    );
+    expect(unaLinea(["Sin punto final", "B."])).toBe("Sin punto final y 1 más.");
+    expect(unaLinea(["Total: $ 1.000,00.", "B."])).toBe("Total: $ 1.000,00 y 1 más.");
   });
 });
 
@@ -446,7 +465,7 @@ describe("detalle de una fila en partes sin cortes (C2, C6)", () => {
 
   it("los demás detalles son una sola parte de texto, y sin detalle no hay partes", () => {
     const [f] = planilla({});
-    expect(detalleFilaPartes({ tipo: "revisar" }, f as Fila, ["A.", "B."])).toEqual([{ tipo: "texto", texto: "A. y 1 más" }]);
+    expect(detalleFilaPartes({ tipo: "revisar" }, f as Fila, ["A.", "B."])).toEqual([{ tipo: "texto", texto: "A y 1 más." }]);
     expect(detalleFilaPartes({ tipo: "falta" }, f as Fila, [])).toEqual([]);
     expect(detalleFilaPartes({ tipo: "duplicada", original: 1 }, f as Fila, [])).toEqual([]);
   });
